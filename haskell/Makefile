@@ -1,9 +1,11 @@
 
 all:
-	@echo Choose a project
+	@echo Choose a project:
+	@echo dzida
 
-dzida:
+dzida: dzida.hs
 	ghc dzida.hs
 
 clean:
-	rm *.o *.hi dzida
+	rm *.o *.hi 
+	rm dzida
