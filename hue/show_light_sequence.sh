@@ -7,10 +7,6 @@ shift
 
 . $( dirname $0 )/user.key 
 
-echo key is $user_key
-
-exit
-
 while read x y b ; do 
    echo ======================= $x $y $b   
    for light ; do 
