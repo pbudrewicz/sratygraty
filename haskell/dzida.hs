@@ -1,3 +1,6 @@
+
+import System.Environment
+
 data Dzida = Przed | Srod | Za deriving (Show)
 
 -- instance Show ( Dzida ) where 
@@ -25,13 +28,16 @@ unroll [] = []
 unroll [[]] = [[x] | x <- part_names] 
 unroll (x:xs) = [ y:x   | y <- part_names ] ++ unroll xs
 
-dzid :: Int -> [[String]] -- handle enumerated recursion for expansion
+dzid :: Int -> [[String]] -- handle enumerated recursion for expansion of abstract type
 dzid 0 = [[]]
 dzid l = unroll ( dzid  ( l-1 ) )
 
-dzida :: Int -> String -- get name of dzida's parts expanded numbered time
+dzida :: Int -> String -- get name of dzida's parts expanded number of times as a description string
 dzida l = join ".\n" (map (\x -> (nominative x) ++ " sklada sie z " ++ join ", " (map (genitive) (unroll  [x]))) (dzid l)) ++ ".\n"
 
-main = do
-  putStr ( concat ( map (\l -> dzida l ++ "\n" ) [0..] ))
+describe :: [String] -> String -- describe dzida up to x levels (or infinite when empty)
+describe [] =  concat ( map (\l -> dzida l ++ "\n" ) [0..] )
+describe x  = concat ( map (\l -> dzida l ++ "\n" ) [0..(read (head x))] )
+
+main = do a <- getArgs ; putStr ( describe a )
 
