@@ -16,7 +16,7 @@ b=$3
 . $( dirname $0 )/user.key 
 
 
-for light in $lights do
+for light in $lights ; do
   case $schema in
 	xy)	
            curl -s -X PUT -d '{"on":true, "xy":['$4', '$5'], "bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
