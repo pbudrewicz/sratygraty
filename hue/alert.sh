@@ -3,7 +3,7 @@
 ### author: p.budrewicz
 
 if [ "$1" = "" ] ; then
-  echo "$0 light_list"
+  echo "$0 light [light [...]]"
   exit 0
 fi
 
