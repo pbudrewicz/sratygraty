@@ -13,10 +13,15 @@ fi
 UNTIL=$( date --date $TIME +%s)
 
 while [ $( date +%s )  -lt $UNTIL ] ; do
+  
+  for light; do
 
-  $(dirname $0)/alert.sh $*
+    if [ "$( ./get_on_off.sh $light )" = "true" ] ; then
+      $(dirname $0)/alert.sh $light
+    fi
 
-#  echo still blinking... $(date): $( date +%s) == $(date --date $TIME +%s)
+  done
+
 
   sleep 1
 done
