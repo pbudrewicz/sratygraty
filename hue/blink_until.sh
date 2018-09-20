@@ -12,6 +12,8 @@ fi
 
 UNTIL=$( date --date $TIME +%s)
 
+$( dirname $0)/lights_on.sh $*
+
 while [ $( date +%s )  -lt $UNTIL ] ; do
   
   for light; do
