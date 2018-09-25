@@ -3,316 +3,477 @@
 ### author: p.budrewicz
 
 . $( dirname $0 )/user.key 
+VERBOSE=0
+QUIET=0
+
+TEMP=$( getopt -o b:hqu:v --long bridge:,help,quiet,user:,verbose -n $0 -- "$@" )
+
+if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
+
+eval set -- "$TEMP"
+
+
+feedback () {
+    if [ "$VERBOSE" = "1" ] ; then
+        echo "$@"
+    fi
+}
+
+polite_curl () {
+    if [ "$QUIET" != "1" ]; then
+        curl "$@"
+    else
+        curl "$@" >/dev/null 2>/dev/null
+    fi
+}
 
 alert () { 
 
-if [ "$1" = "" ] ; then
-  echo "$0 light [light [...]]"
-  exit 0
-fi
+    if [ "$1" = "" ] ; then
+        echo "$0 light [light [...]]"
+        exit 0
+    fi
 
-for light do
-   curl -s -X PUT -d '{"alert":"select"}' http://$bridge_ip/api/$user_key/lights/$light/state 
-done
+    for light; do
+        polite_curl -s -X PUT -d '{"alert":"select"}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    done
 }
 
 
 blink_until () { 
 
-TIME=$1
-shift
+    TIME=$1
+    shift
 
-if [ "$TIME" = "" ] ; then
-  echo "Usage: $0 time light [light [...]]"
-  exit 1
-fi
-
-UNTIL=$( date --date $TIME +%s)
-
-$( dirname $0)/lights_on.sh $*
-sleep 1 # wait 4 reaction
-
-while [ $( date +%s )  -lt $UNTIL ] ; do
-  
-  for light; do
-
-    if [ "$( ./get_on_off.sh $light )" = "true" ] ; then
-      $(dirname $0)/alert.sh $light
-    else
-      exit 0
+    if [ "$TIME" = "" ] ; then
+        echo "Usage: $0 time light [light [...]]"
+        exit 1
     fi
 
-  done
+    UNTIL=$( date --date $TIME +%s)
+
+    $( dirname $0)/lights_on.sh $*
+    sleep 1 # wait 4 reaction
+
+    while [ $( date +%s )  -lt $UNTIL ] ; do
+        
+        for light; do
+
+            if [ "$( ./get_on_off.sh $light )" = "true" ] ; then
+                $(dirname $0)/alert.sh $light
+            else
+                exit 0
+            fi
+
+        done
 
 
-  sleep 1
-done
+        sleep 1
+    done
 
 }
 
 
 color_loop () { 
 
-effect=colorloop
-if [ "$1" = "off" ] ; then
-  effect=none
-  shift
-fi
+    effect=colorloop
+    if [ "$1" = "off" ] ; then
+        effect=none
+        shift
+    fi
 
-if [ "$1" = "" ] ; then
-  echo "$0 [off] light_list"
-  exit 0
-fi
-
-
-. $( dirname $0 )/user.key 
+    if [ "$1" = "" ] ; then
+        echo "$0 [off] light_list"
+        exit 0
+    fi
 
 
-for light do
-   curl -s -X PUT -d '{"effect":"'$effect'"}' http://$bridge_ip/api/$user_key/lights/$light/state 
-done
+    . $( dirname $0 )/user.key 
+
+
+    for light; do
+        polite_curl -s -X PUT -d '{"effect":"'$effect'"}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    done
 }
 
 
 fade_away () { 
 
-sleep=$1
-shift
-light=$1
+    sleep=$1
+    shift
+    light=$1
 
-if [ "$1" = "" ] ; then
-  echo "$0 sleep light"
-  exit 0
-fi
-
-
-. $( dirname $0 )/user.key 
-
-cd $( dirname $0 )
-
-b=$(  ./get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"bri" : (\d+),/' )
-while [ $b -gt 0 ] ; do
-   $( dirname $0 )/set_brightness.sh $b $light
-   sleep $sleep
-   b=$(( $b - 1 ))
-done
+    if [ "$1" = "" ] ; then
+        echo "$0 sleep light"
+        exit 0
+    fi
 
 
-$( dirname $0 )/lights_off.sh $light
+    . $( dirname $0 )/user.key 
+
+    cd $( dirname $0 )
+
+    b=$(  ./get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"bri" : (\d+),/' )
+    while [ $b -gt 0 ] ; do
+        $( dirname $0 )/set_brightness.sh $b $light
+        sleep $sleep
+        b=$(( $b - 1 ))
+    done
+
+
+    $( dirname $0 )/lights_off.sh $light
 
 }
 
 
 get_brightness () { 
 
-light=$1
-if [ "$light" = "" ] ; then
-  echo Usage $0 light
-  exit 1
-fi
+    light=$1
+    if [ "$light" = "" ] ; then
+        echo Usage $0 light
+        exit 1
+    fi
 
-$( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"bri" : (\d+),/' 
+    $( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"bri" : (\d+),/' 
 }
 
 
 get_config () { 
 
-. $( dirname $0 )/user.key 
+    . $( dirname $0 )/user.key 
 
 
-curl -s -X GET  http://$bridge_ip/api/$user_key/config
+    curl -s -X GET  http://$bridge_ip/api/$user_key/config
 }
 
 
 get_lights () { 
 
-. $( dirname $0 )/user.key 
+    . $( dirname $0 )/user.key 
 
-if [ "$1" != "" ] ; then
-  for light ; do 
-    curl -s -X GET  http://$bridge_ip/api/$user_key/lights/$light
-  done
-else
-  curl -s -X GET  http://$bridge_ip/api/$user_key/lights
-fi
+    if [ "$1" != "" ] ; then
+        for light ; do 
+            curl -s -X GET  http://$bridge_ip/api/$user_key/lights/$light
+        done
+    else
+        curl -s -X GET  http://$bridge_ip/api/$user_key/lights
+    fi
 
 }
 
 
 get_on_off () { 
 
-light=$1
-if [ "$light" = "" ] ; then
-  echo Usage $0 light
-  exit 1
-fi
+    light=$1
+    if [ "$light" = "" ] ; then
+        echo Usage $0 light
+        exit 1
+    fi
 
-$( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"on" : (\w+),/' 
+    $( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"on" : (\w+),/' 
 }
 
 
 is_light_on () { 
 
-light=$1
-if [ "$light" = "" ] ; then
-  echo ERROR: Usage $0 light >&2
-  exit 255
-fi
+    light=$1
+    if [ "$light" = "" ] ; then
+        echo ERROR: Usage $0 light >&2
+        exit 255
+    fi
 
-if [ "$( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print \$1 if m/\"on\" : (\\w+),/'" = "true" ] ; then
-  exit 0
-else
-  exit 1
-fi
+    if [ "$( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print \$1 if m/\"on\" : (\\w+),/'" = "true" ] ; then
+        exit 0
+    else
+        exit 1
+    fi
 }
 
 
 lights_off () { 
 
-if [ "$1" = "" ] ; then
-  echo "$0 light_list"
-  exit 0
-fi
+    if [ "$1" = "" ] ; then
+        echo "$0 light_list"
+        exit 0
+    fi
 
 
-. $( dirname $0 )/user.key 
+    . $( dirname $0 )/user.key 
 
 
-for light do
-   curl -s -X PUT -d '{"on":false}' http://$bridge_ip/api/$user_key/lights/$light/state 
-done
+    for light ; do
+        polite_curl -s -X PUT -d '{"on":false}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    done
 }
 
 
 lights_on () { 
 
-if [ "$1" = "" ] ; then
-  echo "$0 light_list"
-  exit 0
-fi
+    if [ "$1" = "" ] ; then
+        echo "$0 light_list"
+        exit 0
+    fi
 
 
-. $( dirname $0 )/user.key 
+    . $( dirname $0 )/user.key 
 
 
-for light do
-   curl -s -X PUT -d '{"on":true}' http://$bridge_ip/api/$user_key/lights/$light/state 
-done
+    for light; do
+        polite_curl -s -X PUT -d '{"on":true}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    done
 }
 
 
 my_loop () { 
-hue=0
+    hue=0
 
-while true ; do
-  ./set_color.sh $1 hue 100 $hue 200
-  hue=$(( ( $hue + 10000 ) % 65000 ))
-  sleep 1
-done
+    while true ; do
+        ./set_color.sh $1 hue 100 $hue 200
+        hue=$(( ( $hue + 10000 ) % 65000 ))
+        sleep 1
+    done
 }
 
 
 set_brightness () { 
 
-b=$1
-shift
+    b=$1
+    shift
 
-if [ "$1" = "" ] ; then
-  echo "$0 brightness light_list"
-  exit 0
-fi
+    if [ "$1" = "" ] ; then
+        echo "$0 brightness light_list"
+        exit 0
+    fi
 
-. $( dirname $0 )/user.key 
+    . $( dirname $0 )/user.key 
 
-for light do
-  curl -s -X PUT -d '{"bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
-done
+    for light ; do
+        polite_curl -s -X PUT -d '{"bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    done
 }
 
 
 set_color () { 
 
-if [ "$1" = "" ] ; then
-  echo "$0 light_list (xy|ct|hue) bri (x y|ct|hue sat)"
-  echo "  bri 1-254 ; ct - 153 - 500 (cold - warm)"
-  exit 0
-fi
+    if [ "$1" = "" ] ; then
+        echo "$0 light_list (xy|ct|hue) bri (x y|ct|hue sat)"
+        echo "  bri 1-254 ; ct - 153 - 500 (cold - warm)"
+        exit 0
+    fi
 
 
-lights="$1"
-schema=$2
-b=$3
+    lights="$1"
+    schema=$2
+    b=$3
 
-. $( dirname $0 )/user.key 
+    . $( dirname $0 )/user.key 
 
 
-for light in $lights ; do
-  case $schema in
-	xy)	
-           curl -s -X PUT -d '{"on":true, "xy":['$4', '$5'], "bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
-         ;;
-       ct)
-           curl -s -X PUT -d '{"on":true, "ct":'$4', "bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
-        ;;
-       hue)
-           curl -s -X PUT -d '{"on":true, "hue":'$4', "sat":'$5',"bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
-       ;;
-  esac
-done
+    for light in $lights ; do
+        case $schema in
+	    xy)	
+                polite_curl -s -X PUT -d '{"on":true, "xy":['$4', '$5'], "bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+                ;;
+            ct)
+                polite_curl -s -X PUT -d '{"on":true, "ct":'$4', "bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+                ;;
+            hue)
+                polite_curl -s -X PUT -d '{"on":true, "hue":'$4', "sat":'$5',"bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+                ;;
+        esac
+    done
 }
 
 
 set_saturation () { 
 
-v=$1
-shift
+    v=$1
+    shift
 
-if [ "$1" = "" ] ; then
-  echo "$0 brightness light_list"
-  exit 0
-fi
+    if [ "$1" = "" ] ; then
+        echo "$0 brightness light_list"
+        exit 0
+    fi
 
-. $( dirname $0 )/user.key 
+    . $( dirname $0 )/user.key 
 
-for light do
-  curl -s -X PUT -d '{"sat":'$v'}' http://$bridge_ip/api/$user_key/lights/$light/state 
-done
+    for light ; do
+    polite_curl -s -X PUT -d '{"sat":'$v'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    done
 }
 
 
 show_light_sequence () { 
 
-SLEEP=$1
-shift
-light=$1
+    SLEEP=$1
+    shift
+    light=$1
 
-. $( dirname $0 )/user.key 
+    . $( dirname $0 )/user.key 
 
-while read x y b ; do 
-   echo ======================= $x $y $b   
-     curl -s -X PUT -d '{"on":true, "xy":['$x', '$y'], "bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state > /dev/null
-   sleep $SLEEP
-   if [ "$( $( dirname $0 )/get_on_off.sh $light )" = "false" ] ; then
-     $( dirname $0 )/set_color.sh $light hue 254 45000 200
-     $( dirname $0 )/lights_off.sh $light
-     exit 0
-   fi
-done 
+    while read x y b ; do 
+        feedback = $x $y $b   
+        polite_curl -s -X PUT -d '{"on":true, "xy":['$x', '$y'], "bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+        sleep $SLEEP
+        if [ "$( $( dirname $0 )/get_on_off.sh $light )" = "false" ] ; then
+            $( dirname $0 )/set_color.sh $light hue 254 45000 200
+            $( dirname $0 )/lights_off.sh $light
+            exit 0
+        fi
+    done 
 }
 
 
 sunrise () { 
 
-$(dirname $0)/lights_on.sh "$2"
-$(dirname $0)/show_light_sequence.sh $1 "$2" < $(dirname $0)/data/sunrise-96.dat
+    $(dirname $0)/lights_on.sh "$2"
+    $(dirname $0)/show_light_sequence.sh $1 "$2" < $(dirname $0)/data/sunrise-96.dat
 }
 
 
 sunset () { 
 
-$(dirname $0)/lights_on.sh "$2"
-tac $( dirname $0 )/data/sunrise-120.dat |$(dirname $0)/show_light_sequence.sh $1 "$2" 
-$( dirname $0 )/lights_off.sh $2
+    $(dirname $0)/lights_on.sh "$2"
+    tac $( dirname $0 )/data/sunrise-120.dat |$(dirname $0)/show_light_sequence.sh $1 "$2" 
+    $( dirname $0 )/lights_off.sh $2
+}
+
+set_value() {
+
+    HELPTEXT="
+hue set 
+       brightness value - set brightness (1-254)
+       saturation value - set saturation (1-200)
+       color 
+         hue {hue} {brightness} {saturation}
+         xy  {x} {y} {brightness}
+         ct  {mirek} {brightness}
+"
+    cmd=$1
+    shift
+    case $cmd in
+        brightness)
+            ;;
+        saturation)
+            ;;
+        color)
+            feedback setting color $*
+            ;;
+        *)
+            show_help
+            ;;
+    esac
+}
+
+get_value() {
+    HELPTEXT="
+hue get
+        brightness
+        onoff
+        config
+        lights
+"
+    cmd=$1
+    shift
+    case $cmd in
+        brightness)
+            ;;
+        onoff)
+            ;;
+        config)
+            feedback getting config
+            ;;
+        lights)
+            ;;
+        *)
+            show_help
+            ;;
+    esac
 }
 
 
+HELPTEXT="
+Usage: 
+  hue [-b bridge_ip] [-h] [-q] [-u user_key] [-v] commands 
+    Options are:
+      -b|--bridge_ip -- IP address of the hue bridge device
+      -h|--help      -- this help
+      -q|--quiet     -- quiet - hide http responses from the bridge
+      -u|--user      -- user key for the bridge
+      -v|--verbose   -- give feedback on taken actions
+    Commands are:
+      blink - start blinking
+      loop  - start color loop
+      get 
+        config - fetch config from bridge
+        lights - get lights status
+        brightness - get light brightness
+        onoff - get on/of status of the light
+      set 
+        color - set full color parameters
+        brightness - set brightness 
+        saturation - set saturation
+      fade - fade away 
+      alert - 
+      sunset
+      sunrise
+"
+
+show_help () {
+  echo "$HELPTEXT"
+  exit 1
+}
+
+while true ; do
+    case "$1" in
+        -b|--bridge)
+            bridge_ip="$2"; shift 2;;
+        -h|--help)
+            show_help; exit 0;;
+        -q|--quiet)
+            QUIET=1;  shift ;;
+        -u|--user)
+            user_key="$2"; shift 2;;
+        -v|--verbose)
+            VERBOSE=1; shift ;;
+        --) 
+            shift ; break ;;
+        *) echo "Internal error!" ; exit 1 ;;
+    esac
+done
+
+cmd=$1
+shift
+case $cmd in
+    alert)
+        ;;
+    blink_until)
+        ;;
+    color_loop)
+        ;;
+    fade_away)
+        ;;
+    get)
+        get_value $*
+        ;;
+    is_light_on)
+        ;;
+    lights_off)
+        ;;
+    lights_on)
+        ;;
+    my_loop)
+        ;;
+    set)
+        set_value $*
+        ;;
+    show_light_sequence)
+        ;;
+    sunrise)
+        ;;
+    sunset)
+        ;;
+    *)
+        show_help
+        ;;
+esac
