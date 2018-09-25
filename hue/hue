@@ -423,14 +423,14 @@ hue get
 
 HELPTEXT="
 Usage: 
-  hue [-b bridge_ip] [-h] [-l light] [-q] [-u user_key] [-v] commands 
+  hue [-b bridge_ip] [-h] [[-l light] ... ] [-q] [-u user_key] [[-v] ... ] commands
     Options are:
       -b|--bridge_ip -- IP address of the hue bridge device
       -h|--help      -- this help
-      -l|--light     -- light number to use 
+      -l|--light     -- light number to use (add -l for every light or put together in quoted string)
       -q|--quiet     -- quiet - hide http responses from the bridge
       -u|--user      -- user key for the bridge
-      -v|--verbose   -- give feedback on taken actions
+      -v|--verbose   -- give feedback on taken actions (more -v increases level)
     Commands are:
       alert - 
       blink - start blinking
@@ -453,7 +453,15 @@ Usage:
       show    - show sequence
       sunset  - show sunset sequence
       sunrise - show sunrise sequence
+
+  Specifying light[s] is mandatory
 "
+
+mandatory_lights () {
+    if [ "$LIGHTS" = "" ] ; then
+        show_help 1
+    fi
+}
 
 show_help () {
   echo "$HELPTEXT"
@@ -482,10 +490,7 @@ while true ; do
     esac
 done
 
-if [ "$LIGHTS" = "" ] ; then
-  echo No lights specified
-  exit 1
-fi
+mandatory_lights
 
 cmd=$1
 shift
