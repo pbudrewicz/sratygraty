@@ -360,7 +360,7 @@ hue set
             feedback setting color $*
             ;;
         *)
-            show_help
+            show_help 1
             ;;
     esac
 }
@@ -386,7 +386,7 @@ hue get
         lights)
             ;;
         *)
-            show_help
+            show_help 1
             ;;
     esac
 }
@@ -421,7 +421,7 @@ Usage:
 
 show_help () {
   echo "$HELPTEXT"
-  exit 1
+  exit $1
 }
 
 while true ; do
@@ -429,7 +429,7 @@ while true ; do
         -b|--bridge)
             bridge_ip="$2"; shift 2;;
         -h|--help)
-            show_help; exit 0;;
+            show_help 0 ;;
         -q|--quiet)
             QUIET=1;  shift ;;
         -u|--user)
@@ -474,6 +474,6 @@ case $cmd in
     sunset)
         ;;
     *)
-        show_help
+        show_help 1
         ;;
 esac
