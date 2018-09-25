@@ -16,13 +16,13 @@ eval set -- "$TEMP"
 
 
 feedback () {
-    if [ "$VERBOSE" = "1" ] ; then
-        echo "$@ for lights $LIGHTS"
+    if [ "$VERBOSE" -gt "0" ] ; then
+        echo "$@ for light $light"
     fi
 }
 
 polite_curl () {
-    if [ "$DRY" = "1" ] || [ "$VERBOSE" -gt "1" ] ; then
+    if  [ "$VERBOSE" -gt "1" ] || [ "$DRY" = "1" -a "$QUIET" != "1" ]; then
         echo "running curl $@"
     fi
     if [ "$DRY" = "1" ] ; then
@@ -251,7 +251,43 @@ set_brightness () {
     done
 }
 
+set_hue () {
+    HELPTEXT="
+hue set color hue {hue:0-65000} {brightness:1-254} {saturation:1-200}
+   
+"
+    if [ "$3" = "" ] ; then
+        show_help 1
+    fi    
+    feedback setting hue to $*
+    polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$3',"bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state     
+}
 
+set_xy () {
+    HELPTEXT="
+hue set color xy {x} {y} {brightness:1-254}
+
+"
+    if [ "$3" = "" ] ; then
+        show_help 1
+    fi    
+    feedback setting CIE color to $*
+    polite_curl -s -X PUT -d '{"on":true, "xy":['$1', '$2'], "bri":'$3'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+}
+
+set_ct () {
+    HELPTEXT="
+hue set color ct  {mirek:153-500} {brightness:1-254}
+            153 - cold -- 500 - warm
+"
+    if [ "$2" = "" ] ; then
+        show_help 1
+    fi    
+
+    feedback setting mirek to $*
+    polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+}
+    
 set_color () { 
 
     HELPTEXT="
@@ -266,16 +302,13 @@ hue set color
     for light in $LIGHTS ; do
         case $schema in
 	    xy)	
-                feedback setting $schema to $*
-                polite_curl -s -X PUT -d '{"on":true, "xy":['$1', '$2'], "bri":'$3'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+                set_xy $*
                 ;;
             ct)
-                feedback setting $schema to $*
-                polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+                set_ct $*
                 ;;
             hue)
-                feedback setting $schema to $*
-                polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$3',"bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+                set_hue $*
                 ;;
             *)
                 show_help 1 
@@ -442,7 +475,7 @@ while true ; do
         -u|--user)
             user_key="$2"; shift 2;;
         -v|--verbose)
-            VERBOSE=1; shift ;;
+            VERBOSE=$(( $VERBOSE + 1 )); shift ;;
         --) 
             shift ; break ;;
         *) echo "Internal error!" ; exit 1 ;;
