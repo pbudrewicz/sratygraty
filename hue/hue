@@ -402,21 +402,27 @@ Usage:
       -u|--user      -- user key for the bridge
       -v|--verbose   -- give feedback on taken actions
     Commands are:
+      alert - 
       blink - start blinking
-      loop  - start color loop
+      fade - fade away 
       get 
         config - fetch config from bridge
         lights - get lights status
         brightness - get light brightness
-        onoff - get on/of status of the light
+        onoff - get on/of status of the light      
+      loop 
+        mode  - start color loop mode
+        custom  - start custom color loop
       set 
         color - set full color parameters
         brightness - set brightness 
         saturation - set saturation
-      fade - fade away 
-      alert - 
-      sunset
-      sunrise
+        light (on|off) - turn light on/off
+      is
+        light - return \"light is on\" status (0/1 - true/false)
+      show    - show sequence
+      sunset  - show sunset sequence
+      sunrise - show sunrise sequence
 "
 
 show_help () {
@@ -467,7 +473,8 @@ case $cmd in
     set)
         set_value $*
         ;;
-    show_light_sequence)
+    show_sequence)
+
         ;;
     sunrise)
         ;;
