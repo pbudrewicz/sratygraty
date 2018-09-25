@@ -5,8 +5,10 @@
 . $( dirname $0 )/user.key 
 VERBOSE=0
 QUIET=0
+DRY=0
+LIGHTS=""
 
-TEMP=$( getopt -o b:hqu:v --long bridge:,help,quiet,user:,verbose -n $0 -- "$@" )
+TEMP=$( getopt -o b:dhl:qu:v --long bridge:,dry,help,light,quiet,user:,verbose -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -15,11 +17,17 @@ eval set -- "$TEMP"
 
 feedback () {
     if [ "$VERBOSE" = "1" ] ; then
-        echo "$@"
+        echo "$@ for lights $LIGHTS"
     fi
 }
 
 polite_curl () {
+    if [ "$DRY" = "1" ] || [ "$VERBOSE" -gt "1" ] ; then
+        echo "running curl $@"
+    fi
+    if [ "$DRY" = "1" ] ; then
+        return
+    fi
     if [ "$QUIET" != "1" ]; then
         curl "$@"
     else
@@ -237,49 +245,41 @@ my_loop () {
 
 set_brightness () { 
 
-    b=$1
-    shift
-
-    if [ "$1" = "" ] ; then
-        echo "$0 brightness light_list"
-        exit 0
-    fi
-
-    . $( dirname $0 )/user.key 
-
+    feedback setting brightness to $*    
     for light ; do
-        polite_curl -s -X PUT -d '{"bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+        polite_curl -s -X PUT -d '{"bri":'$1'}' http://$bridge_ip/api/$user_key/lights/$light/state 
     done
 }
 
 
 set_color () { 
 
-    if [ "$1" = "" ] ; then
-        echo "$0 light_list (xy|ct|hue) bri (x y|ct|hue sat)"
-        echo "  bri 1-254 ; ct - 153 - 500 (cold - warm)"
-        exit 0
-    fi
+    HELPTEXT="
+hue set color 
+          hue {hue:0-65000} {brightness:1-254} {saturation:1-200}
+          xy  {x} {y} {brightness:1-254}
+          ct  {mirek:153-500} {brightness:1-254}
+"
+    schema=$1
+    shift
 
-
-    lights="$1"
-    schema=$2
-    b=$3
-
-    . $( dirname $0 )/user.key 
-
-
-    for light in $lights ; do
+    for light in $LIGHTS ; do
         case $schema in
 	    xy)	
-                polite_curl -s -X PUT -d '{"on":true, "xy":['$4', '$5'], "bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+                feedback setting $schema to $*
+                polite_curl -s -X PUT -d '{"on":true, "xy":['$1', '$2'], "bri":'$3'}' http://$bridge_ip/api/$user_key/lights/$light/state 
                 ;;
             ct)
-                polite_curl -s -X PUT -d '{"on":true, "ct":'$4', "bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+                feedback setting $schema to $*
+                polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state 
                 ;;
             hue)
-                polite_curl -s -X PUT -d '{"on":true, "hue":'$4', "sat":'$5',"bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+                feedback setting $schema to $*
+                polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$3',"bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state 
                 ;;
+            *)
+                show_help 1 
+                ;;            
         esac
     done
 }
@@ -287,18 +287,9 @@ set_color () {
 
 set_saturation () { 
 
-    v=$1
-    shift
-
-    if [ "$1" = "" ] ; then
-        echo "$0 brightness light_list"
-        exit 0
-    fi
-
-    . $( dirname $0 )/user.key 
-
+    feedback setting saturation to $* 
     for light ; do
-    polite_curl -s -X PUT -d '{"sat":'$v'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+        polite_curl -s -X PUT -d '{"sat":'$v'}' http://$bridge_ip/api/$user_key/lights/$light/state 
     done
 }
 
@@ -353,11 +344,13 @@ hue set
     shift
     case $cmd in
         brightness)
+            set_brightness $*
             ;;
         saturation)
+            set_saturation $*
             ;;
-        color)
-            feedback setting color $*
+        color)            
+            set_color $*
             ;;
         *)
             show_help 1
@@ -368,10 +361,11 @@ hue set
 get_value() {
     HELPTEXT="
 hue get
-        brightness
-        onoff
-        config
-        lights
+        brightness - brightness of light
+        onoff  - on/off status of light
+        config - full bridge config JSON
+        lights - lights data in JSON format
+        mode   - current color mode (hue/xy/ct)
 "
     cmd=$1
     shift
@@ -385,6 +379,8 @@ hue get
             ;;
         lights)
             ;;
+        mode)
+            ;;
         *)
             show_help 1
             ;;
@@ -394,10 +390,11 @@ hue get
 
 HELPTEXT="
 Usage: 
-  hue [-b bridge_ip] [-h] [-q] [-u user_key] [-v] commands 
+  hue [-b bridge_ip] [-h] [-l light] [-q] [-u user_key] [-v] commands 
     Options are:
       -b|--bridge_ip -- IP address of the hue bridge device
       -h|--help      -- this help
+      -l|--light     -- light number to use 
       -q|--quiet     -- quiet - hide http responses from the bridge
       -u|--user      -- user key for the bridge
       -v|--verbose   -- give feedback on taken actions
@@ -434,8 +431,12 @@ while true ; do
     case "$1" in
         -b|--bridge)
             bridge_ip="$2"; shift 2;;
+        -d|--dry)
+            DRY=1; shift ;;
         -h|--help)
             show_help 0 ;;
+        -l|--light)
+            LIGHTS="$LIGHTS $2"; shift 2;;
         -q|--quiet)
             QUIET=1;  shift ;;
         -u|--user)
@@ -447,6 +448,11 @@ while true ; do
         *) echo "Internal error!" ; exit 1 ;;
     esac
 done
+
+if [ "$LIGHTS" = "" ] ; then
+  echo No lights specified
+  exit 1
+fi
 
 cmd=$1
 shift
@@ -474,7 +480,6 @@ case $cmd in
         set_value $*
         ;;
     show_sequence)
-
         ;;
     sunrise)
         ;;
