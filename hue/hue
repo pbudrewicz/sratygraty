@@ -36,29 +36,25 @@ polite_curl () {
 }
 
 alert () { 
-
-    if [ "$1" = "" ] ; then
-        echo "$0 light [light [...]]"
-        exit 0
-    fi
-
-    for light; do
+    
+    for light in $LIGHTS; do
         polite_curl -s -X PUT -d '{"alert":"select"}' http://$bridge_ip/api/$user_key/lights/$light/state 
     done
 }
 
 
 blink_until () { 
-
+    HELPTEXT="
+hue blink until_time
+    differrent time formats accepted
+"
     TIME=$1
-    shift
 
     if [ "$TIME" = "" ] ; then
-        echo "Usage: $0 time light [light [...]]"
-        exit 1
+        show_help 1
     fi
 
-    UNTIL=$( date --date $TIME +%s)
+    UNTIL=$( date --date "$TIME" +%s)
 
     $( dirname $0)/lights_on.sh $*
     sleep 1 # wait 4 reaction
@@ -198,39 +194,25 @@ is_light_on () {
 }
 
 
-lights_off () { 
+set_light () { 
 
-    if [ "$1" = "" ] ; then
-        echo "$0 light_list"
-        exit 0
-    fi
+    HELPTEXT="
+hue light on|off
+"
+   
+    ONOFF=$1
 
-
-    . $( dirname $0 )/user.key 
-
-
-    for light ; do
-        polite_curl -s -X PUT -d '{"on":false}' http://$bridge_ip/api/$user_key/lights/$light/state 
-    done
+    case  $ONOFF in
+        on)
+            feedback setting light on
+            polite_curl -s -X PUT -d '{"on":true}' http://$bridge_ip/api/$user_key/lights/$light/state ;;
+        off)
+            feedback setting light off
+            polite_curl -s -X PUT -d '{"on":false}' http://$bridge_ip/api/$user_key/lights/$light/state ;;
+        *)
+            show_help 1
+    esac
 }
-
-
-lights_on () { 
-
-    if [ "$1" = "" ] ; then
-        echo "$0 light_list"
-        exit 0
-    fi
-
-
-    . $( dirname $0 )/user.key 
-
-
-    for light; do
-        polite_curl -s -X PUT -d '{"on":true}' http://$bridge_ip/api/$user_key/lights/$light/state 
-    done
-}
-
 
 my_loop () { 
     hue=0
@@ -372,6 +354,9 @@ hue set
          hue {hue} {brightness} {saturation}
          xy  {x} {y} {brightness}
          ct  {mirek} {brightness}
+      light
+         on
+         off
 "
     cmd=$1
     shift
@@ -384,6 +369,9 @@ hue set
             ;;
         color)            
             set_color $*
+            ;;
+        light)
+            set_light $*
             ;;
         *)
             show_help 1
@@ -423,7 +411,7 @@ hue get
 
 HELPTEXT="
 Usage: 
-  hue [-b bridge_ip] [-h] [[-l light] ... ] [-q] [-u user_key] [[-v] ... ] commands
+  hue [-b bridge_ip] [-h] [[-l light] ... ] [-q] [-u user_key] [[-v] ... ] command
     Options are:
       -b|--bridge_ip -- IP address of the hue bridge device
       -h|--help      -- this help
@@ -432,8 +420,8 @@ Usage:
       -u|--user      -- user key for the bridge
       -v|--verbose   -- give feedback on taken actions (more -v increases level)
     Commands are:
-      alert - 
-      blink - start blinking
+      alert - one blink please
+      blink - start blinking until date/time
       fade - fade away 
       get 
         config - fetch config from bridge
@@ -444,22 +432,23 @@ Usage:
         mode  - start color loop mode
         custom  - start custom color loop
       set 
-        color - set full color parameters
+        color      - set all color parameters
         brightness - set brightness 
         saturation - set saturation
-        light (on|off) - turn light on/off
+        light 
+          on       - turn on the light
+          off      - turn off the light
       is
         light - return \"light is on\" status (0/1 - true/false)
       show    - show sequence
       sunset  - show sunset sequence
       sunrise - show sunrise sequence
-
-  Specifying light[s] is mandatory
 "
 
 mandatory_lights () {
     if [ "$LIGHTS" = "" ] ; then
-        show_help 1
+        echo "Specifying light[s] is mandatory. Try $0 -h"
+        exit 1
     fi
 }
 
@@ -496,8 +485,10 @@ cmd=$1
 shift
 case $cmd in
     alert)
+        alert 
         ;;
-    blink_until)
+    blink)
+        blink_until $*
         ;;
     color_loop)
         ;;
@@ -508,9 +499,11 @@ case $cmd in
         ;;
     is_light_on)
         ;;
-    lights_off)
+    off)
+        lights of $*
         ;;
-    lights_on)
+    on)
+        lights on $*
         ;;
     my_loop)
         ;;
