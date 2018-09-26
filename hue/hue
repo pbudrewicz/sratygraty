@@ -38,6 +38,7 @@ polite_curl () {
 alert () { 
     
     for light in $LIGHTS; do
+        set_light on 
         polite_curl -s -X PUT -d '{"alert":"select"}' http://$bridge_ip/api/$user_key/lights/$light/state 
     done
 }
@@ -56,22 +57,17 @@ hue blink until_time
 
     UNTIL=$( date --date "$TIME" +%s)
 
-    $( dirname $0)/lights_on.sh $*
+    set_light on
     sleep 1 # wait 4 reaction
 
-    while [ $( date +%s )  -lt $UNTIL ] ; do
-        
-        for light; do
-
-            if [ "$( ./get_on_off.sh $light )" = "true" ] ; then
-                $(dirname $0)/alert.sh $light
+    while [ $( date +%s )  -lt $UNTIL ] ; do        
+        for light in $LIGHTS; do            
+            if [ "$( ./get_on_off.sh $light )" = "true" ] ; then ### TODO: check light status after rethinking light status tool
+                alert
             else
                 exit 0
-            fi
-
+            fi            
         done
-
-
         sleep 1
     done
 
@@ -153,8 +149,6 @@ get_config () {
 
 get_lights () { 
 
-    . $( dirname $0 )/user.key 
-
     if [ "$1" != "" ] ; then
         for light ; do 
             curl -s -X GET  http://$bridge_ip/api/$user_key/lights/$light
@@ -162,18 +156,11 @@ get_lights () {
     else
         curl -s -X GET  http://$bridge_ip/api/$user_key/lights
     fi
-
+    
 }
 
 
 get_on_off () { 
-
-    light=$1
-    if [ "$light" = "" ] ; then
-        echo Usage $0 light
-        exit 1
-    fi
-
     $( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"on" : (\w+),/' 
 }
 
@@ -187,9 +174,9 @@ is_light_on () {
     fi
 
     if [ "$( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print \$1 if m/\"on\" : (\\w+),/'" = "true" ] ; then
-        exit 0
+        return 0
     else
-        exit 1
+        return 1
     fi
 }
 
@@ -498,6 +485,7 @@ case $cmd in
         get_value $*
         ;;
     is_light_on)
+        is_light_on
         ;;
     off)
         lights of $*
