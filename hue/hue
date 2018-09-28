@@ -35,16 +35,17 @@ polite_curl () {
     fi
 }
 
-alert () { 
+alert () { # uses $LIGHTS 
     
-    for light in $LIGHTS; do
-        set_light on 
+    for light ; do
+#        set_light on 
+        feedback alert 
         polite_curl -s -X PUT -d '{"alert":"select"}' http://$bridge_ip/api/$user_key/lights/$light/state 
     done
 }
 
 
-blink_until () { 
+blink_until () { # uses $LIGHTS and $light
     HELPTEXT="
 hue blink until_time
     differrent time formats accepted
@@ -56,14 +57,15 @@ hue blink until_time
     fi
 
     UNTIL=$( date --date "$TIME" +%s)
-
-    set_light on
+    for light in $LIGHTS ; do 	
+      set_light on
+    done
     sleep 1 # wait 4 reaction
 
     while [ $( date +%s )  -lt $UNTIL ] ; do        
         for light in $LIGHTS; do            
-            if [ "$( ./get_on_off.sh $light )" = "true" ] ; then ### TODO: check light status after rethinking light status tool
-                alert
+            if  is_light_on $light ; then 
+                alert $light
             else
                 exit 0
             fi            
@@ -97,7 +99,7 @@ color_loop () {
 }
 
 
-fade_away () { 
+fade () { 
 
     sleep=$1
     shift
@@ -129,19 +131,12 @@ fade_away () {
 get_brightness () { 
 
     light=$1
-    if [ "$light" = "" ] ; then
-        echo Usage $0 light
-        exit 1
-    fi
 
-    $( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"bri" : (\d+),/' 
+    get_lights $light |perl -ne 'print $1 if m/"bri" : (\d+),/' 
 }
 
 
 get_config () { 
-
-    . $( dirname $0 )/user.key 
-
 
     curl -s -X GET  http://$bridge_ip/api/$user_key/config
 }
@@ -161,19 +156,13 @@ get_lights () {
 
 
 get_on_off () { 
-    $( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"on" : (\w+),/' 
+    get_lights $1 |perl -ne 'print "true" if m/"on"\s*:\s*true,/' 
 }
 
 
 is_light_on () { 
 
-    light=$1
-    if [ "$light" = "" ] ; then
-        echo ERROR: Usage $0 light >&2
-        exit 255
-    fi
-
-    if [ "$( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print \$1 if m/\"on\" : (\\w+),/'" = "true" ] ; then
+    if [ $(get_on_off $1) = true ] ; then
         return 0
     else
         return 1
@@ -479,7 +468,8 @@ case $cmd in
         ;;
     color_loop)
         ;;
-    fade_away)
+    fade)
+        fade
         ;;
     get)
         get_value $*
