@@ -101,38 +101,36 @@ color_loop () {
 
 fade () { 
 
-    sleep=$1
+HELPTEXT="
+hue fade 
+     until time
+     for   period
+"
+    
+    time_parameter=$1
     shift
-    light=$1
 
-    if [ "$1" = "" ] ; then
-        echo "$0 sleep light"
-        exit 0
-    fi
-
-
-    . $( dirname $0 )/user.key 
-
-    cd $( dirname $0 )
-
-    b=$(  ./get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"bri" : (\d+),/' )
-    while [ $b -gt 0 ] ; do
-        $( dirname $0 )/set_brightness.sh $b $light
-        sleep $sleep
-        b=$(( $b - 1 ))
+    sleep=$time_parameter
+    
+    for light  in $LIGHTS ; do
+	{
+	    b=$(  get_brightness $light)
+	    sleep=1 # TODO: but it will be calculated depending on time_parameter  AND something 
+	    while [ $b -gt 0 ] ; do
+		set_brightness $b $light
+		sleep $sleep
+		b=$(( $b - 1 ))
+	    done 
+	    set_light off $light
+	} &
     done
-
-
-    $( dirname $0 )/lights_off.sh $light
+    wait
 
 }
 
 
 get_brightness () { 
-
-    light=$1
-
-    get_lights $light |perl -ne 'print $1 if m/"bri" : (\d+),/' 
+    get_lights $1 |perl -ne 'print $1 if m/"bri"\s*:\s*(\d+),/'
 }
 
 
@@ -202,10 +200,11 @@ my_loop () {
 
 
 set_brightness () { 
-
-    feedback setting brightness to $*    
-    for light ; do
-        polite_curl -s -X PUT -d '{"bri":'$1'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    BRIGHTNESS=$1
+    shift
+    feedback setting brightness to $BRIGHTNESS    
+    for light in $LIGHTS ; do
+        polite_curl -s -X PUT -d '{"bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state 
     done
 }
 
@@ -368,13 +367,19 @@ hue get
     shift
     case $cmd in
         brightness)
+	    get_brightness $LIGHTS
             ;;
         onoff)
-            ;;
+            get_on_off $LIGHTS
+	    ;;
         config)
             feedback getting config
             ;;
         lights)
+	    get_lights $LIGHTS|json_pp
+
+
+	    
             ;;
         mode)
             ;;
@@ -469,7 +474,7 @@ case $cmd in
     color_loop)
         ;;
     fade)
-        fade
+        fade $*
         ;;
     get)
         get_value $*
