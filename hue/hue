@@ -7,8 +7,9 @@ VERBOSE=0
 QUIET=0
 DRY=0
 LIGHTS=""
+SLEEP=1
 
-TEMP=$( getopt -o b:dhl:qu:v --long bridge:,dry,help,light,quiet,user:,verbose -n $0 -- "$@" )
+TEMP=$( getopt -o b:dhl:qs:u:v --long bridge:,dry,help,light,quiet,sleep:,user:,verbose -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -37,26 +38,61 @@ polite_curl () {
 
 alert () { # uses $LIGHTS 
     
-    for light ; do
-#        set_light on 
+    for light in $LIGHTS; do
+        set_light on 
         feedback alert 
         polite_curl -s -X PUT -d '{"alert":"select"}' http://$bridge_ip/api/$user_key/lights/$light/state 
     done
 }
 
 
-blink_until () { # uses $LIGHTS and $light
+blink () { # uses $LIGHTS and $light
     HELPTEXT="
-hue blink until_time
+hue blink 
+       until time
+       for period
+       once
+       times number
     differrent time formats accepted
 "
-    TIME=$1
+    cmd=$1
+    shift
+    case $cmd in
+	[u]ntil)
+	    if [ "$1" = "" ] ; then
+		show_help 1
+	    fi
+	    feedback blinking until $1
+	    UNTIL=$( date --date "$TIME" +%s)
+	    ;;
+	[f]or)
+	    if [ "$1" = "" ] ; then
+		show_help 1
+	    fi
+	    feedback blinking for $1 seconds
+	    UNTIL=$(( $( date +%s ) + $1))
+	    ;;
+	once)
+	    feedback blinking once
+	    alert
+	    exit 0
+	    ;;
+	times)
+	    if [ "$1" = "" ] ; then
+		show_help 1
+	    fi
+	    feedback blinking $1 times
+	    for i in $(seq 1 $1) ; do
+		alert ; sleep $SLEEP
+	    done
+	    exit 0
+	    ;;
+	*)
+	    show_help 1
+	    ;;
+    esac
+		
 
-    if [ "$TIME" = "" ] ; then
-        show_help 1
-    fi
-
-    UNTIL=$( date --date "$TIME" +%s)
     for light in $LIGHTS ; do 	
       set_light on
     done
@@ -70,7 +106,7 @@ hue blink until_time
                 exit 0
             fi            
         done
-        sleep 1
+        sleep $SLEEP
     done
 
 }
@@ -118,7 +154,7 @@ hue fade
 	    sleep=1 # TODO: but it will be calculated depending on time_parameter  AND something 
 	    while [ $b -gt 0 ] ; do
 		set_brightness $b $light
-		sleep $sleep
+		sleep $SLEEP
 		b=$(( $b - 1 ))
 	    done 
 	    set_light off $light
@@ -176,6 +212,10 @@ hue light on|off
    
     ONOFF=$1
 
+    shift
+
+    for light in $LIGHTS ; do
+
     case  $ONOFF in
         on)
             feedback setting light on
@@ -186,6 +226,8 @@ hue light on|off
         *)
             show_help 1
     esac
+
+  done
 }
 
 my_loop () { 
@@ -194,7 +236,7 @@ my_loop () {
     while true ; do
         ./set_color.sh $1 hue 100 $hue 200
         hue=$(( ( $hue + 10000 ) % 65000 ))
-        sleep 1
+        sleep $SLEEP
     done
 }
 
@@ -286,7 +328,6 @@ set_saturation () {
 
 show_light_sequence () { 
 
-    SLEEP=$1
     shift
     light=$1
 
@@ -402,8 +443,14 @@ Usage:
       -v|--verbose   -- give feedback on taken actions (more -v increases level)
     Commands are:
       alert - one blink please
-      blink - start blinking until date/time
-      fade - fade away 
+      blink 
+        until - start blinking until date/time
+        for   - start blinking for some time
+        once  - just blink once
+        times - blink number of times
+      fade 
+        until - fade away until date/time
+        for   - fade away for some time
       get 
         config - fetch config from bridge
         lights - get lights status
@@ -450,6 +497,8 @@ while true ; do
             LIGHTS="$LIGHTS $2"; shift 2;;
         -q|--quiet)
             QUIET=1;  shift ;;
+	-s|--sleep)
+	    SLEEP="$2"; shift 2;;
         -u|--user)
             user_key="$2"; shift 2;;
         -v|--verbose)
@@ -469,7 +518,7 @@ case $cmd in
         alert 
         ;;
     blink)
-        blink_until $*
+        blink $*
         ;;
     color_loop)
         ;;
