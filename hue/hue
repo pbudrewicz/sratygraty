@@ -45,6 +45,9 @@ alert () { # uses $LIGHTS
     done
 }
 
+time_2_sec () {
+    
+}
 
 blink () { # uses $LIGHTS and $light
     HELPTEXT="
@@ -58,14 +61,14 @@ hue blink
     cmd=$1
     shift
     case $cmd in
-	[u]ntil)
+	[u]ntil) # until is a keyword and breaks emacs's and vim's formatting. LOL
 	    if [ "$1" = "" ] ; then
 		show_help 1
 	    fi
 	    feedback blinking until $1
 	    UNTIL=$( date --date "$TIME" +%s)
 	    ;;
-	[f]or)
+	[f]or) # for is a keyword and breaks emacs's and vim's formatting. LOL
 	    if [ "$1" = "" ] ; then
 		show_help 1
 	    fi
