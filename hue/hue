@@ -168,6 +168,10 @@ hue fade
 }
 
 
+get_color () {
+#    get_lights $1 | perl -ne
+}
+
 get_brightness () { 
     get_lights $1 |perl -ne 'print $1 if m/"bri"\s*:\s*(\d+),/'
 }
@@ -451,6 +455,7 @@ Usage:
         for   - start blinking for some time
         once  - just blink once
         times - blink number of times
+      clone   - set light as another light # TODO
       fade 
         until - fade away until date/time
         for   - fade away for some time
@@ -459,6 +464,7 @@ Usage:
         lights - get lights status
         brightness - get light brightness
         onoff - get on/of status of the light      
+        color - get color description of the lights
       loop 
         mode  - start color loop mode
         custom  - start custom color loop
@@ -525,6 +531,8 @@ case $cmd in
         ;;
     color_loop)
         ;;
+    clone)
+        ;;
     fade)
         fade $*
         ;;
@@ -535,7 +543,7 @@ case $cmd in
         is_light_on
         ;;
     off)
-        lights of $*
+        lights off $*
         ;;
     on)
         lights on $*
