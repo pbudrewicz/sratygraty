@@ -52,6 +52,9 @@ alert () { # uses $LIGHTS
     done
 }
 
+time_2_sec () {
+    
+}
 
 time_2_sec () {
   :    
@@ -69,14 +72,14 @@ hue blink
     cmd=$1
     shift
     case $cmd in
-	[u]ntil)
+	[u]ntil) # until is a keyword and breaks emacs's and vim's formatting. LOL
 	    if [ "$1" = "" ] ; then
 		show_help 1
 	    fi
 	    feedback blinking until $1
 	    UNTIL=$( date --date "$TIME" +%s)
 	    ;;
-	[f]or)
+	[f]or) # for is a keyword and breaks emacs's and vim's formatting. LOL
 	    if [ "$1" = "" ] ; then
 		show_help 1
 	    fi
@@ -175,9 +178,6 @@ hue fade
 
 }
 
-
-<<<<<<< Updated upstream
-=======
 get_color () {
   # ACHTUNG: hue mode is "hs"
     L=$( get_lights $1 )
@@ -202,7 +202,6 @@ get_color () {
     esac
 }
 
->>>>>>> Stashed changes
 get_brightness () { 
     get_lights $1 |perl -ne 'print $1 if m/"bri"\s*:\s*(\d+),/'
 }
@@ -487,6 +486,7 @@ Usage:
         for   - start blinking for some time
         once  - just blink once
         times - blink number of times
+      clone   - set light as another light # TODO
       fade 
         until - fade away until date/time
         for   - fade away for some time
@@ -495,6 +495,7 @@ Usage:
         lights - get lights status
         brightness - get light brightness
         onoff - get on/of status of the light      
+        color - get color description of the lights
       loop 
         mode  - start color loop mode
         custom  - start custom color loop
@@ -561,6 +562,8 @@ case $cmd in
         ;;
     color_loop)
         ;;
+    clone)
+        ;;
     fade)
         fade $*
         ;;
@@ -571,7 +574,7 @@ case $cmd in
         is_light_on
         ;;
     off)
-        lights of $*
+        lights off $*
         ;;
     on)
         lights on $*
