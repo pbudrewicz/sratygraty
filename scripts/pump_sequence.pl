@@ -1,11 +1,12 @@
 #!/usr/bin/perl
-$steps = 10;
-$line = <>;
+$steps = ($ARGV[0] eq "") ? 10 : $ARGV[0];
+$line = <STDIN>;
 ($prevx,$prevy,$prevb) = split ' ', $line;
+printf "%f %f %d \n", $prevx, $prevy, $prevb;
 printf STDERR "x=%f y=%f b=%f\n", $prevx, $prevy, $prevb;
-while (<>) {
+while (<STDIN>) {
   ($x, $y, $b) = split ' ';
-  for ($i=0; $i<$steps; $i++ ) {
+  for ($i=1; $i<$steps; $i++ ) {
         printf STDERR "%f-%f, %f-%f, %f-%f\n", $x, $prevx, $y, $prevy, $b, $prevb;
 	printf "%f %f %d \n", 
             ($x - $prevx)/$steps * $i + $prevx,
@@ -13,4 +14,5 @@ while (<>) {
             ($b - $prevb)/$steps * $i + $prevb;
   }
   ($prevx, $prevy, $prevb) = ($x, $y, $b);
+  printf "%f %f %d \n", $prevx, $prevy, $prevb;
 }
