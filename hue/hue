@@ -7,9 +7,9 @@ VERBOSE=0
 QUIET=0
 DRY=0
 LIGHTS=""
-SLEEP=1
+SLEEP=0.7
 
-TEMP=$( getopt -o b:dhl:qs:u:v --long bridge:,dry,help,light,quiet,sleep:,user:,verbose -n $0 -- "$@" )
+TEMP=$( getopt -o b:dhk:l:p:qv --long bridge:,dry,help,key:,light:,period:,quiet,verbose -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -53,11 +53,13 @@ alert () { # uses $LIGHTS
 }
 
 time_2_sec () {
-    
+    # calculate how many seconds is in 3:00m
+    :    
 }
 
-time_2_sec () {
-  :    
+transit_to_color () {
+    # gently change current color into new one
+    :
 }
 
 blink () { # uses $LIGHTS and $light
@@ -165,7 +167,7 @@ hue fade
     for light  in $LIGHTS ; do
 	{
 	    b=$(  get_brightness $light)
-	    sleep=1 # TODO: but it will be calculated depending on time_parameter  AND something 
+	    sleep=1 # TODO: it will be calculated depending on time_parameter  AND something 
 	    while [ $b -gt 0 ] ; do
 		set_brightness $b $light
 		sleep $SLEEP
@@ -179,7 +181,7 @@ hue fade
 }
 
 get_color () {
-  # ACHTUNG: hue mode is "hs"
+
     L=$( get_lights $1 )
     color_type=$( echo $L | unjson '{state}{colormode}' )
     case $color_type in
@@ -471,13 +473,15 @@ hue get
 
 HELPTEXT="
 Usage: 
-  hue [-b bridge_ip] [-h] [[-l light] ... ] [-q] [-u user_key] [[-v] ... ] command
+  hue [-b bridge_ip][-d][-h][-k user_key][[-l light] ... ][-p period][-q][[-v] ... ] command
     Options are:
       -b|--bridge_ip -- IP address of the hue bridge device
+      -d|--dry       -- dry run, do not bother the bridge
       -h|--help      -- this help
+      -k|--key       -- user key for the bridge
       -l|--light     -- light number to use (add -l for every light or put together in quoted string)
+      -p|--period    -- period for blinks in seconds (default ${SLEEP}s)
       -q|--quiet     -- quiet - hide http responses from the bridge
-      -u|--user      -- user key for the bridge
       -v|--verbose   -- give feedback on taken actions (more -v increases level)
     Commands are:
       alert - one blink please
@@ -486,19 +490,20 @@ Usage:
         for   - start blinking for some time
         once  - just blink once
         times - blink number of times
+      transit - gently transit to new color #TODO
       clone   - set light as another light # TODO
       fade 
-        until - fade away until date/time
-        for   - fade away for some time
+        until - fade away until date/time #TODO
+        for   - fade away for some time #TODO
       get 
         config - fetch config from bridge
         lights - get lights status
         brightness - get light brightness
         onoff - get on/of status of the light      
         color - get color description of the lights
-      loop 
-        mode  - start color loop mode
-        custom  - start custom color loop
+      loop #TODO
+        mode  - start color loop mode #TODO
+        custom  - start custom color loop #TODO
       set 
         color      - set all color parameters
         brightness - set brightness 
@@ -508,9 +513,9 @@ Usage:
           off      - turn off the light
       is
         light - return \"light is on\" status (0/1 - true/false)
-      show    - show sequence
-      sunset  - show sunset sequence
-      sunrise - show sunrise sequence
+      show    - show sequence #TODO
+      sunset  - show sunset sequence #TODO
+      sunrise - show sunrise sequence #TODO
 "
 
 mandatory_lights () {
@@ -537,7 +542,7 @@ while true ; do
             LIGHTS="$LIGHTS $2"; shift 2;;
         -q|--quiet)
             QUIET=1;  shift ;;
-	-s|--sleep)
+	-p|--period)
 	    SLEEP="$2"; shift 2;;
         -u|--user)
             user_key="$2"; shift 2;;
@@ -560,7 +565,7 @@ case $cmd in
     blink)
         blink $*
         ;;
-    color_loop)
+    loop)
         ;;
     clone)
         ;;
