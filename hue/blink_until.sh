@@ -18,7 +18,7 @@ sleep 1 # wait 4 reaction
 while [ $( date +%s )  -lt $UNTIL ] ; do
   echo $( date +%s ) : $UNTIL 
   for light; do
-    STATE="$( ./get_on_off.sh $light )" 
+    STATE="$( $( dirname $0)/get_on_off.sh $light )" 
     if [ "$STATE" = "true" ] ; then
       $(dirname $0)/alert.sh $light
     else
