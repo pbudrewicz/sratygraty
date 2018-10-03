@@ -8,4 +8,4 @@ if [ "$light" = "" ] ; then
   exit 1
 fi
 
-$( dirname $0 )/get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"on" : (\w+),/' 
+$( dirname $0 )/get_lights.sh $light |perl -ne 'print "true" if m/"on"\s*:\s*true,/' 
