@@ -13,11 +13,19 @@ RED_CORNER="0.6915 0.3083"
 GREEN_CORNER="0.17 0.7"
 BLUE_CORNER="0.1532 0.0475"
 
-TEMP=$( getopt -o b:dhk:l:p:qv --long bridge:,dry,help,key:,light:,period:,quiet,verbose -n $0 -- "$@" )
+TEMP=$( getopt -o b:dhk:l:p:qv:: --long bridge:,dry,help,key:,light:,period:,quiet,verbose:: -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
 eval set -- "$TEMP"
+
+dump_data () {
+    echo VERBOSE=$VERBOSE
+    echo QUIET=$QUIET
+    echo DRY=$DRY
+    echo LIGHTS=$LIGHTS
+    echo SLEEP=$SLEEP
+}
 
 discover_bridge () {
   gssdp-discover
@@ -477,13 +485,13 @@ hue get
 
 HELPTEXT="
 Usage: 
-  hue [-b bridge_ip][-d][-h][-k user_key][[-l light] ... ][-p period][-q][[-v] ... ] command
+  hue [-b bridge_ip][-d][-h][-k user_key][[-l number] ... ][-p period][-q][[-v[level]] ... ] command
     Options are:
       -b|--bridge_ip -- IP address of the hue bridge device
       -d|--dry       -- dry run, do not bother the bridge
       -h|--help      -- this help
       -k|--key       -- user key for the bridge
-      -l|--light     -- light number to use (add -l for every light or put together in quoted string)
+      -l|--light     -- light to change (add -l for every light or list in quoted string)
       -p|--period    -- period for blinks in seconds (default ${SLEEP}s)
       -q|--quiet     -- quiet - hide http responses from the bridge
       -v|--verbose   -- give feedback on taken actions (more -v increases level)
@@ -551,7 +559,13 @@ while true ; do
         -u|--user)
             user_key="$2"; shift 2;;
         -v|--verbose)
-            VERBOSE=$(( $VERBOSE + 1 )); shift ;;
+            case "$2" in
+                "")
+                    VERBOSE=$(( $VERBOSE + 1 ));;
+                [0-9])
+                    VERBOSE="$2" ;;
+            esac
+            shift 2;;
         --) 
             shift ; break ;;
         *) echo "Internal error!" ; exit 1 ;;
@@ -569,9 +583,11 @@ case $cmd in
     blink)
         blink $*
         ;;
-    loop)
-        ;;
     clone)
+        ;;
+    dump)
+        dump_data
+        exit 0
         ;;
     fade)
         fade $*
@@ -582,13 +598,15 @@ case $cmd in
     is_light_on)
         is_light_on
         ;;
+    loop)
+        ;;
+    my_loop)
+        ;;
     off)
         lights off $*
         ;;
     on)
         lights on $*
-        ;;
-    my_loop)
         ;;
     set)
         set_value $*
