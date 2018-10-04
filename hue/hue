@@ -192,9 +192,9 @@ hue fade
 
 }
 
-get_color () {
+get_color () { # one light only
 
-    L=$( get_lights $1 )
+    L=$( get_lights_json $1 )
     color_type=$( echo $L | unjson '{state}{colormode}' )
     case $color_type in
 	xy)
@@ -217,16 +217,16 @@ get_color () {
 }
 
 get_brightness () { 
-    get_lights $1 |perl -ne 'print $1 if m/"bri"\s*:\s*(\d+),/'
+    get_lights_json $1 | unjson '{state}{bri}'
 }
 
 
-get_config () { 
+get_config_json () { 
     curl -s -X GET  http://$bridge_ip/api/$user_key/config
 }
 
 
-get_lights () { 
+get_lights_json () { 
 
     if [ "$1" != "" ] ; then
         for light ; do 
@@ -240,7 +240,7 @@ get_lights () {
 
 
 get_on_off () { 
-    get_lights $1 |perl -ne 'print "true" if m/"on"\s*:\s*true,/' 
+    get_lights_json $1 |perl -ne 'print "true" if m/"on"\s*:\s*true,/' 
 }
 
 
@@ -466,13 +466,13 @@ hue get
 	    ;;
         config)
             feedback getting config
-	    get_config $*
+	    get_config_json $*
             ;;
         lights)
-	    get_lights $LIGHTS 
+	    get_lights_json $LIGHTS 
 	    ;;
         color)
-	    get_color $LIGHTS
+	    get_color $1
             ;;
         mode)
             ;;
@@ -502,17 +502,18 @@ Usage:
         for   - start blinking for some time
         once  - just blink once
         times - blink number of times
-      transit - gently transit to new color #TODO
       clone   - set light as another light # TODO
       fade 
         until - fade away until date/time #TODO
         for   - fade away for some time #TODO
       get 
-        config - fetch config from bridge
-        lights - get lights status
-        brightness - get light brightness
-        onoff - get on/of status of the light      
-        color - get color description of the lights
+        config - fetch config from bridge in JSON
+        lights - get lights status in JSON
+        brightness - get light brightness value
+        onoff - get on/of status of the light 
+        color - get color description of the light 
+      is
+        on - return \"light is on\" status (0/1 - true/false) # TODO
       loop #TODO
         mode  - start color loop mode #TODO
         custom  - start custom color loop #TODO
@@ -523,11 +524,10 @@ Usage:
         light 
           on       - turn on the light
           off      - turn off the light
-      is
-        light - return \"light is on\" status (0/1 - true/false)
       show    - show sequence #TODO
       sunset  - show sunset sequence #TODO
       sunrise - show sunrise sequence #TODO
+      transit - gently transit to new color #TODO
 "
 
 mandatory_lights () {
@@ -584,6 +584,7 @@ case $cmd in
         blink $*
         ;;
     clone)
+        set_value color $(get_color $1)
         ;;
     dump)
         dump_data
@@ -595,8 +596,8 @@ case $cmd in
     get)
         get_value $*
         ;;
-    is_light_on)
-        is_light_on
+    is)
+        is_light_on $*
         ;;
     loop)
         ;;
