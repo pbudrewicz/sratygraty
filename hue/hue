@@ -27,8 +27,20 @@ dump_data () {
     echo SLEEP=$SLEEP
 }
 
+scan_net () {
+    #     feedback -n .
+    gssdp-discover -n 5 | grep Location: | while  read loc url ; do
+	if curl -s $url | grep -qi "Philips hue bridge" ; then
+	    echo $url |sed s/description.xml//
+	    return 0;
+	fi 
+    done
+    return 1
+}
+
 discover_bridge () {
-  gssdp-discover
+    bridge_url=$(scan_net)
+    echo bridge_url=$bridge_url
 }
 
 unjson () {
@@ -37,7 +49,7 @@ unjson () {
 
 feedback () {
     if [ "$VERBOSE" -gt "0" ] ; then
-        echo "$@ for light $light"
+        echo "$@"
     fi
 }
 
@@ -195,13 +207,14 @@ hue fade
 get_color () { # one light only
 
     L=$( get_lights_json $1 )
-    color_type=$( echo $L | unjson '{state}{colormode}' )
+    color_type=$( echo "$L" | unjson '{state}{colormode}' )
+    on=$( echo "$L" | unjson '{state}{on}' )
     case $color_type in
 	xy)
 	    x=$( echo $L | unjson '{state}{xy}[0]' )
 	    y=$( echo $L | unjson '{state}{xy}[1]' )
 	    bri=$( echo $L | unjson '{state}{bri}' )
-	    echo xy $x $y $bri
+	    echo xy $x $y $bri # $( if [[ "$on" != "true" ]] ; then echo "# off" ; fi )
 	    ;;
 	hs)
 	    hue=$( echo $L | unjson '{state}{hue}' )
@@ -217,7 +230,7 @@ get_color () { # one light only
 }
 
 get_brightness () { 
-    get_lights_json $1 | unjson '{state}{bri}'
+    echo $(get_lights_json $1 | unjson '{state}{bri}' )
 }
 
 
@@ -229,9 +242,7 @@ get_config_json () {
 get_lights_json () { 
 
     if [ "$1" != "" ] ; then
-        for light ; do 
-            curl -s -X GET  http://$bridge_ip/api/$user_key/lights/$light
-        done
+        curl -s -X GET  http://$bridge_ip/api/$user_key/lights/$1
     else
         curl -s -X GET  http://$bridge_ip/api/$user_key/lights
     fi
@@ -459,17 +470,17 @@ hue get
     shift
     case $cmd in
         brightness)
-	    get_brightness $LIGHTS
+	    get_brightness $*
             ;;
         onoff)
-            get_on_off $LIGHTS
+            get_on_off $*
 	    ;;
         config)
             feedback getting config
 	    get_config_json $*
             ;;
         lights)
-	    get_lights_json $LIGHTS 
+	    get_lights_json $*
 	    ;;
         color)
 	    get_color $1
@@ -509,14 +520,15 @@ Usage:
       get 
         config - fetch config from bridge in JSON
         lights - get lights status in JSON
-        brightness - get light brightness value
-        onoff - get on/of status of the light 
-        color - get color description of the light 
+        brightness LIGHT - get light brightness value for LIGHT
+        onoff LIGHT - get on/of status of the light LIGHT
+        color LIGHT - get color description of the light LIGHT
       is
         on - return \"light is on\" status (0/1 - true/false) # TODO
       loop #TODO
         mode  - start color loop mode #TODO
         custom  - start custom color loop #TODO
+      scan         - scan network for a bridge
       set 
         color      - set all color parameters
         brightness - set brightness 
@@ -572,53 +584,60 @@ while true ; do
     esac
 done
 
-mandatory_lights
-
 cmd=$1
 shift
 case $cmd in
-    alert)
-        alert 
-        ;;
-    blink)
-        blink $*
-        ;;
-    clone)
-        set_value color $(get_color $1)
-        ;;
-    dump)
-        dump_data
-        exit 0
-        ;;
-    fade)
-        fade $*
-        ;;
+    scan)
+	discover_bridge
+	exit 0
+	;;
     get)
-        get_value $*
-        ;;
+	get_value $*
+	;;
     is)
-        is_light_on $*
-        ;;
-    loop)
-        ;;
-    my_loop)
-        ;;
-    off)
-        lights off $*
-        ;;
-    on)
-        lights on $*
-        ;;
-    set)
-        set_value $*
-        ;;
-    show_sequence)
-        ;;
-    sunrise)
-        ;;
-    sunset)
-        ;;
+	is_light_on $*
+	;;
+    dump)
+	dump_data
+	exit 0
+	;;
     *)
-        show_help 1
-        ;;
+	mandatory_lights
+	case $cmd in
+	    alert)
+		alert 
+		;;
+	    blink)
+		blink $*
+		;;
+	    clone)
+		set_value color $(get_color $1)
+		;;
+	    fade)
+		fade $*
+		;;
+	    loop)
+		;;
+	    my_loop)
+		;;
+	    off)
+		lights off $*
+		;;
+	    on)
+		lights on $*
+		;;
+	    set)
+		set_value $*
+		;;
+	    show_sequence)
+		;;
+	    sunrise)
+		;;
+	    sunset)
+		;;
+	    *)
+		show_help 1
+		;;
+	esac
+	
 esac
