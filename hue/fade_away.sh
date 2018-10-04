@@ -16,7 +16,7 @@ fi
 
 cd $( dirname $0 )
 
-b=$(  ./get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"bri" : (\d+),/' )
+b=$(  ./get_lights.sh $light |json_pp |perl -ne 'print $1 if m/"bri"\s*:\s*(\d+),/' )
 while [ $b -gt 0 ] ; do
    $( dirname $0 )/set_brightness.sh $b $light
    sleep $sleep
