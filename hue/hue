@@ -9,6 +9,10 @@ DRY=0
 LIGHTS=""
 SLEEP=0.7
 
+RED_CORNER="0.6915 0.3083"
+GREEN_CORNER="0.17 0.7"
+BLUE_CORNER="0.1532 0.0475"
+
 TEMP=$( getopt -o b:dhk:l:p:qv --long bridge:,dry,help,key:,light:,period:,quiet,verbose -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
