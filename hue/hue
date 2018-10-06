@@ -214,7 +214,7 @@ get_color () { # one light only
 	    x=$( echo $L | unjson '{state}{xy}[0]' )
 	    y=$( echo $L | unjson '{state}{xy}[1]' )
 	    bri=$( echo $L | unjson '{state}{bri}' )
-	    echo xy $x $y $bri # $( if [[ "$on" != "true" ]] ; then echo "# off" ; fi )
+	    echo xy $x $y $bri  $( if ! is_light_on $1; then echo "# off" ; fi )
 	    ;;
 	hs)
 	    hue=$( echo $L | unjson '{state}{hue}' )
@@ -251,13 +251,13 @@ get_lights_json () {
 
 
 get_on_off () { 
-    get_lights_json $1 |perl -ne 'print "true" if m/"on"\s*:\s*true,/' 
+    get_lights_json $1 |unjson '{state}{on}'
 }
 
 
-is_light_on () { 
-
-    if [ $(get_on_off $1) = true ] ; then
+is_light_on () {
+    
+    if [ "$(get_on_off $1)" = "1" ] ; then
         return 0
     else
         return 1
