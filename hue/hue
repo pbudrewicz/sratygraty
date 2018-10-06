@@ -4,7 +4,7 @@
 
 . $( dirname $0 )/user.key 
 VERBOSE=0
-QUIET=0
+SHOW_RESPONSES=0
 DRY=0
 LIGHTS=""
 SLEEP=0.7
@@ -13,7 +13,7 @@ RED_CORNER="0.6915 0.3083"
 GREEN_CORNER="0.17 0.7"
 BLUE_CORNER="0.1532 0.0475"
 
-TEMP=$( getopt -o b:dhk:l:p:qv:: --long bridge:,dry,help,key:,light:,period:,quiet,verbose:: -n $0 -- "$@" )
+TEMP=$( getopt -o b:dhk:l:p:rv:: --long bridge:,dry,help,key:,light:,period:,responses,verbose:: -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -21,7 +21,7 @@ eval set -- "$TEMP"
 
 dump_data () {
     echo VERBOSE=$VERBOSE
-    echo QUIET=$QUIET
+    echo SHOW_RESPONSES=$SHOW_RESPONSES
     echo DRY=$DRY
     echo LIGHTS=$LIGHTS
     echo SLEEP=$SLEEP
@@ -54,13 +54,13 @@ feedback () {
 }
 
 polite_curl () {
-    if  [ "$VERBOSE" -gt "1" ] || [ "$DRY" = "1" -a "$QUIET" != "1" ]; then
+    if  [ "$VERBOSE" -gt "1" ] || [ "$DRY" = "1" ] || [ "$SHOW_RESPONSES" = "1" ]; then
         echo "running curl $@"
     fi
     if [ "$DRY" = "1" ] ; then
         return
     fi
-    if [ "$QUIET" != "1" ]; then
+    if [ "$SHOW_RESPONSES" = "1" ]; then
         curl "$@"
     else
         curl "$@" >/dev/null 2>/dev/null
@@ -496,7 +496,7 @@ hue get
 
 HELPTEXT="
 Usage: 
-  hue [-b bridge_ip][-d][-h][-k user_key][[-l number] ... ][-p period][-q][[-v[level]] ... ] command
+  hue [-b bridge_ip][-d][-h][-k user_key][[-l number] ... ][-p period][-r][[-v[level]] ... ] command
     Options are:
       -b|--bridge_ip -- IP address of the hue bridge device
       -d|--dry       -- dry run, do not bother the bridge
@@ -504,7 +504,7 @@ Usage:
       -k|--key       -- user key for the bridge
       -l|--light     -- light to change (add -l for every light or list in quoted string)
       -p|--period    -- period for blinks in seconds (default ${SLEEP}s)
-      -q|--quiet     -- quiet - hide http responses from the bridge
+      -r|--responses -- show http responses from the bridge
       -v|--verbose   -- give feedback on taken actions (more -v increases level)
     Commands are:
       alert - one blink please
@@ -562,14 +562,14 @@ while true ; do
             DRY=1; shift ;;
         -h|--help)
             show_help 0 ;;
+        -k|--key)
+            user_key="$2"; shift 2;;
         -l|--light)
             LIGHTS="$LIGHTS $2"; shift 2;;
-        -q|--quiet)
-            QUIET=1;  shift ;;
 	-p|--period)
 	    SLEEP="$2"; shift 2;;
-        -u|--user)
-            user_key="$2"; shift 2;;
+        -r|--responses)
+            SHOW_RESPONSES=1;  shift ;;
         -v|--verbose)
             case "$2" in
                 "")
