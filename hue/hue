@@ -125,7 +125,9 @@ hue_pulse () {
 	set_color $*
     done
     sleep $SLEEP;
-    set_color $SAVED_COLOR
+    for light in $LIGHTS ; do 
+	set_color $SAVED_COLOR
+    done
 }
 
 blink () { # uses $LIGHTS and $light
