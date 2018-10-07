@@ -4,6 +4,8 @@ PATH=$PATH:~/sratygraty/scripts
 DATA=/tmp/weather_info.dat
 DIR=$( dirname $0 )
 
+. $DIR/../hue/colors.sh
+
 if [ "$1" = "-f" ] ; then
     $DIR/get_weather.sh -f > $DATA
 fi
@@ -37,9 +39,13 @@ for i in $(seq 0 $(( $CAST_COUNT - 1 )) ) ; do
     T=$( C_from_K $temperature )
     condition=$( weather get "{list}[$i]{weather}[0]{main}" ) 
     date=$( weather get "{list}[$i]{dt_txt}" )
-    if is_today $date ; then break ; fi 
+    if is_today $date ; then continue ; else echo showing $date; fi 
     COLOR=$( $DIR/../hue/temp2color.sh $T)
     echo $date $condition $T color:$COLOR
     $DIR/../hue/hue -l 3 set color xy $COLOR 200
-    sleep 1
+    sleep 2
+    if [ "$condition" = "Rain" ] ; then
+      echo ...raining...
+      $DIR/../hue/hue -l 3 pulse xy $VIOLET_COLOR 100 -p 1
+    fi	
 done
