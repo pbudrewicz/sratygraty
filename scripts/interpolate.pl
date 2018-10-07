@@ -4,7 +4,6 @@ $line = <STDIN>;
 chomp $line;
 @prevflds = split ' ', $line;
 print STDOUT join( " ", @prevflds), "\n";
-printf STDERR "x=%f y=%f b=%f\n", $prevx, $prevy, $prevb;
 while (<STDIN>) {
     chomp;
     @flds = split ' ';
