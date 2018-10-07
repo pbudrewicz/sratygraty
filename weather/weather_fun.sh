@@ -50,7 +50,7 @@ for i in $(seq 0 $(( $CAST_COUNT - 1 )) ) ; do
     if is_today $date ; then continue ; else echo showing $date; fi 
     COLOR=$( $DIR/../hue/temp2color.sh $T)
     echo $date $condition $T color:$COLOR
-    $DIR/../hue/hue -l 3 set color xy $COLOR 200
+    $DIR/../hue/hue -l 3 set color xy $COLOR 100
     sleep 2
     if [ "$condition" = "Rain" ] ; then
       echo ...raining...
@@ -62,5 +62,5 @@ for i in $(seq 0 $(( $CAST_COUNT - 1 )) ) ; do
     fi	
 done
 echo MAX T = $MAX_TEMP at $MAX_DATE
-$DIR/../hue/hue -l 3 set color xy $( $DIR/../hue/temp2color.sh $MAX_TEMP ) 200 -v
+$DIR/../hue/hue -l 3 set color xy $( $DIR/../hue/temp2color.sh $MAX_TEMP ) 100 -v
 
