@@ -67,6 +67,38 @@ polite_curl () {
     fi
 }
 
+### some fun math...
+
+interpolate () {
+
+  deb "$@"
+  LEFT=$1
+  RIGHT=$2
+  LCOLORX=$3
+  LCOLORY=$4
+  RCOLORX=$5
+  RCOLORY=$6
+  VALUE=$7
+  FRAC=$( calc "( $VALUE  - $LEFT ) / ( $RIGHT - $LEFT )" )
+  deb frac:$FRAC
+  COLX=$( calc "$LCOLORX + $FRAC * ($RCOLORX - $LCOLORX)")
+  deb x:$COLX
+  COLY=$( calc "$LCOLORY + $FRAC * ($RCOLORY - $LCOLORY)" )
+  deb x:$COLY
+  echo $COLX $COLY
+}
+
+deb () {
+  : echo "$@" >&2
+}
+
+calc () {
+    RES="$( echo "$@" | bc -l )"
+    printf "%f" $RES
+}
+
+### end math
+
 alert () { # uses $LIGHTS 
     
     for light in $LIGHTS; do
@@ -83,7 +115,17 @@ time_2_sec () {
 
 transit_to_color () {
     # gently change current color into new one
+    
     :
+}
+
+hue_pulse () {
+    for light in $LIGHTS ; do
+	SAVED_COLOR=$( get_color $light )
+	set_color $*
+    done
+    sleep $SLEEP;
+    set_color $SAVED_COLOR
 }
 
 blink () { # uses $LIGHTS and $light
@@ -530,11 +572,12 @@ Usage:
         custom  - start custom color loop #TODO
       on           - turn on the light
       off          - turn off the light
+      pulse COLOR  - set COLOR for a period and go 122GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGback
       scan         - scan network for a bridge
       set 
-        color      - set all color parameters
-        brightness - set brightness 
-        saturation - set saturation
+        color COLOR - set all color parameters
+        brightness  - set brightness 
+        saturation  - set saturation
         light 
           on       - turn on the light
           off      - turn off the light
@@ -631,6 +674,9 @@ case $cmd in
 		;;
 	    on)
 		lights on $*
+		;;
+	    pulse)
+		hue_pulse $*
 		;;
 	    set)
 		set_value $*
