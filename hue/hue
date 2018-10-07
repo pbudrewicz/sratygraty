@@ -528,6 +528,8 @@ Usage:
       loop #TODO
         mode  - start color loop mode #TODO
         custom  - start custom color loop #TODO
+      on           - turn on the light
+      off          - turn off the light
       scan         - scan network for a bridge
       set 
         color      - set all color parameters
