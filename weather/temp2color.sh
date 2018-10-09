@@ -46,6 +46,7 @@ deb () {
 
 color_from_C () {
   T=$1
+  deb T=$T
   if [ "$( echo "$T > $RED_POINT"|bc)" = "1" ] ; then
     deb red
     echo $RED_COLOR
