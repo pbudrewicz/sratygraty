@@ -31,7 +31,7 @@ interpolate () {
   RCOLORX=$5
   RCOLORY=$6
   VALUE=$7
-  FRAC=$( echo "( $VALUE  - $LEFT ) / ( $RIGHT - $LEFT )" | bc -l)
+  FRAC=$( printf "%f" $( echo "( $VALUE  - $LEFT ) / ( $RIGHT - $LEFT )" | bc -l))
   deb frac:$FRAC
   COLX=$(printf "%f" $( echo "$LCOLORX + $FRAC * ($RCOLORX - $LCOLORX)" | bc -l))
   deb x:$COLX
