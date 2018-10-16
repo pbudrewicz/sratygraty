@@ -574,7 +574,7 @@ Usage:
         custom  - start custom color loop #TODO
       on           - turn on the light
       off          - turn off the light
-      pulse COLOR  - set COLOR for a period and go 122GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGback
+      pulse COLOR  - set COLOR for a period and go back
       scan         - scan network for a bridge
       set 
         color COLOR - set all color parameters
