@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PATH=$PATH:~/sratygraty/scripts:~/sratygraty/hue
+PATH=$PATH:~/sratygraty/scripts:~/sratygraty/hue:~/sratygraty/weather
 DATA=/tmp/weather_info.dat
 DIR=$( dirname $0 )
 
@@ -42,9 +42,7 @@ is_the_day () {
 
 hue -l 3 set light off
 hue -l 3 set color xy 0.35 0.35 1 
-sleep 1
-hue -l 3 alert 
-sleep 4
+sleep 3
 
 MAX_TEMP=-50
 MAX_DATE=""
@@ -54,16 +52,20 @@ for i in $(seq 0 $(( $CAST_COUNT - 1 )) ) ; do
     condition=$( weather get "{list}[$i]{weather}[0]{main}" ) 
     date=$( weather get "{list}[$i]{dt_txt}" )
     if is_the_day $date ; then continue ; fi 
-    COLOR=$( $DIR/../hue/temp2color.sh $T)
+    COLOR=$( temp2color.sh $T)
     echo $date $condition $T 
-    hue -l 3 set color xy $COLOR 1 
+    hue -l 3 set color xy $COLOR 200
     sleep 1
-    hue -l 3 alert 
+    #hue -l 3 alert 
 #    sleep 1
     if [ "$condition" = "Rain" ] ; then
       sleep 1
       echo ...raining...
-      $DIR/../hue/hue -l 3 pulse xy $VIOLET_COLOR 200 -p 1
+      hue -l 3 pulse xy $VIOLET_COLOR 200 -p 1
+    elif [ "$condition" = "Snow" ] ; then
+      sleep 1
+      echo ...raining...
+      hue -l 3 pulse xy $WHITE_COLOR 200 -p 1
     fi	
     if [ "$( echo "$T > $MAX_TEMP"|bc)" = "1" ] ; then
 	MAX_TEMP=$T
@@ -71,5 +73,5 @@ for i in $(seq 0 $(( $CAST_COUNT - 1 )) ) ; do
     fi	
 done
 echo MAX T = $MAX_TEMP at $MAX_DATE
-$DIR/../hue/hue -l 3 set color xy $( $DIR/../hue/temp2color.sh $MAX_TEMP ) 200 -v
+hue -l 3 set color xy $( temp2color.sh $MAX_TEMP ) 200 -v
 
