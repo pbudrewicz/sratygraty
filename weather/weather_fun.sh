@@ -61,7 +61,7 @@ for i in $(seq 0 $(( $CAST_COUNT - 1 )) ) ; do
     if [ "$condition" = "Rain" ] ; then
 	sleep 1
 	echo ...raining...
-	hue -l $1 pulse xy $BLUE_COLOR 1 -p 1
+	hue -l $1 pulse xy $BLUE_COLOR 100 -p 1
     elif [ "$condition" = "Snow" ] ; then
 	sleep 1
 	echo ...snowing...
