@@ -40,7 +40,7 @@ is_the_day () {
   fi
 }
 
-hue -l 3 set light off
+#hue -l 3 set light off
 hue -l 3 set color xy 0.35 0.35 1 
 sleep 3
 
@@ -59,13 +59,17 @@ for i in $(seq 0 $(( $CAST_COUNT - 1 )) ) ; do
     #hue -l 3 alert 
 #    sleep 1
     if [ "$condition" = "Rain" ] ; then
-      sleep 1
-      echo ...raining...
-      hue -l 3 pulse xy $VIOLET_COLOR 200 -p 1
+	sleep 1
+	echo ...raining...
+	hue -l $1 pulse xy $BLUE_COLOR 1 -p 1
     elif [ "$condition" = "Snow" ] ; then
-      sleep 1
-      echo ...raining...
-      hue -l 3 pulse xy $WHITE_COLOR 200 -p 1
+	sleep 1
+	echo ...snowing...
+	hue -l $1 pulse xy $WHITE_COLOR 200 -p 1
+    elif [ "$condition" = "Mist" ] ; then
+	sleep 1
+	echo ...fog...
+	hue -l $1 pulse xy $WHITE_COLOR 1 -p 1
     fi	
     if [ "$( echo "$T > $MAX_TEMP"|bc)" = "1" ] ; then
 	MAX_TEMP=$T
