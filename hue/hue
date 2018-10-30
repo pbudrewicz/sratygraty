@@ -431,20 +431,18 @@ set_saturation () {
 }
 
 
-show_light_sequence () { 
+show_sequence () { 
 
     shift
     light=$1
 
-    . $( dirname $0 )/user.key 
-
     while read x y b ; do 
         feedback = $x $y $b   
-        polite_curl -s -X PUT -d '{"on":true, "xy":['$x', '$y'], "bri":'$b'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+        set_color xy $x $y $b
         sleep $SLEEP
         if [ "$( $( dirname $0 )/get_on_off.sh $light )" = "false" ] ; then
-            $( dirname $0 )/set_color.sh $light hue 254 45000 200
-            $( dirname $0 )/lights_off.sh $light
+            set_color hue 254 45000 200
+            set_light off 
             exit 0
         fi
     done 
@@ -557,7 +555,7 @@ Usage:
         for   - start blinking for some time
         once  - just blink once
         times - blink number of times
-      clone   - set light as another light # TODO
+      clone   - set light as another light 
       fade 
         until - fade away until date/time #TODO
         for   - fade away for some time #TODO
@@ -683,7 +681,8 @@ case $cmd in
 	    set)
 		set_value $*
 		;;
-	    show_sequence)
+	    show)
+		show_sequence $* 
 		;;
 	    sunrise)
 		;;
