@@ -61,15 +61,15 @@ for i in $(seq 0 $(( $CAST_COUNT - 1 )) ) ; do
     if [ "$condition" = "Rain" ] ; then
 	sleep 1
 	echo ...raining...
-	hue -l $1 pulse xy $BLUE_COLOR 100 -p 1
+	hue -l 3 pulse xy $BLUE_COLOR 100 -p 1
     elif [ "$condition" = "Snow" ] ; then
 	sleep 1
 	echo ...snowing...
-	hue -l $1 pulse xy $WHITE_COLOR 200 -p 1
+	hue -l 3 pulse xy $WHITE_COLOR 200 -p 1
     elif [ "$condition" = "Mist" ] ; then
 	sleep 1
 	echo ...fog...
-	hue -l $1 pulse xy $WHITE_COLOR 1 -p 1
+	hue -l 3 pulse xy $WHITE_COLOR 1 -p 1
     fi	
     if [ "$( echo "$T > $MAX_TEMP"|bc)" = "1" ] ; then
 	MAX_TEMP=$T
