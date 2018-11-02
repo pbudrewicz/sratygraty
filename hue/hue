@@ -6,6 +6,7 @@
 VERBOSE=0
 SHOW_RESPONSES=0 # show curl responses
 DRY=0 # do not run curl
+DRY_SCHEMA="xy" # default schema when faking bridge interactions
 LIGHTS="" # light list 
 SLEEP=0.7 # sleeping time for blinking etc.
 STEPS="10" # number of steps in transitions
@@ -28,7 +29,7 @@ SUNRISE="0.68 0.3 1
 0.32 0.33 145
 0.31 0.32 254"
 
-TEMP=$( getopt -o b:dhk:l:p:rs:v:: --long bridge:,dry,help,key:,light:,period:,responses,steps:,verbose:: -n $0 -- "$@" )
+TEMP=$( getopt -o b:d::hk:l:p:rs:v:: --long bridge:,dry::,help,key:,light:,period:,responses,steps:,verbose:: -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -89,25 +90,43 @@ interpolate () {
     #  feedback interpolating $@
 
   deb "$@"
-  LEFT=$1
-  RIGHT=$2
-  LCOLORX=$4
-  LCOLORY=$5
-  LBRIGHTNESS=$6
-  RCOLORX=$7
-  RCOLORY=$8
-  RBRIGHTNESS=$9
-  VALUE=${10}
-  deb val:$VALUE
-  FRAC=$( calc "( $VALUE  - $LEFT ) / ( $RIGHT - $LEFT )" )
+  FROM0=$1
+  TO0=$2
+
+  case $3 in 
+      xy|hue)
+          FROM1=$4
+          FROM2=$5
+          FROMB=$6
+          TO1=$7
+          RCOLORY=$8
+          TOB=$9
+          VALUE=${10}
+          ;;
+      ct)
+          FROM1=$4
+          FROMB=$5
+          TO1=$6
+          TOB=$7
+          VALUE=$8
+          ;;
+  esac
+  FRAC=$( calc "( $VALUE  - $FROM0 ) / ( $TO0 - $FROM0 )" )
   deb frac:$FRAC
-  COLX=$( calc "$LCOLORX + $FRAC * ($RCOLORX - $LCOLORX)")
-  deb x:$COLX
-  COLY=$( calc "$LCOLORY + $FRAC * ($RCOLORY - $LCOLORY)" )
-  deb y:$COLY
-  BRI=$( calc "$LBRIGHTNESS + $FRAC * ($RBRIGHTNESS - $LBRIGHTNESS)" | sed s/\\..*// )
-  deb b:$COLY
-  echo xy $COLX $COLY $BRI
+  VAL1=$( calc "$FROM1 + $FRAC * ($TO1 - $FROM1)")
+  deb x:$VAL1
+  BRI=$( calc "$FROMB + $FRAC * ($TOB - $FROMB)" | sed s/\\..*// )
+  deb b:$BRI
+  case $3 in 
+      xy|hue)
+          VAL2=$( calc "$FROM2 + $FRAC * ($TO2 - $FROM2)" )
+          deb y:$VAL2
+          echo $3 $VAL1 $VAL2 $BRI
+          ;;
+      ct)
+          echo $3 $VAL1 $BRI
+          ;;
+  esac
 }
 
 deb () {
@@ -121,8 +140,9 @@ calc () {
 
 ### end math
 
-alert () { 
+alert () { # TODO: just one light! check with other (e.g. blink)
     
+    mandatory_lights
     for light in $LIGHTS; do
         set_light on 
         feedback alert 
@@ -135,20 +155,48 @@ time_2_sec () {
     :    
 }
 
+first ()
+{
+    echo $1
+}
+
 transit_to_color () {
+    # TODO: help
     # gently change current color into new one
+
+HELPTEXT="
+hue transit {color} {brightness} - must be in currently used schema
+
+"
+
     light=$1
     shift
+    schema=$1
     SAVED_COLOR=$( get_color $light )
-    #    SAVED_BRIGHTNESS=$( get_brightness $1 )
+    SAVED_SCHEMA=$( first $SAVED_COLOR )
+    if [ "$schema" != "$SAVED_SCHEMA" ] ; then
+        echo "Cannot transit from $SAVED_SCHEMA to $schema"
+        exit 1
+    fi
     feedback transit from $SAVED_COLOR to $*
     for i in $( seq 1 $STEPS ) ; do
-        NEW_COLOR=$( interpolate 0 $STEPS $SAVED_COLOR $2 $3 $4 $i)
+        case $schema in
+            xy|hue)                                
+                if [ "$4" = "" ] ; then
+                    show_help 1
+                fi
+                NEW_COLOR=$( interpolate 0 $STEPS $SAVED_COLOR $2 $3 $4 $i) ;;            
+            ct)
+                if [ "$3" = "" ] ; then
+                    show_help 1
+                fi
+                NEW_COLOR=$( interpolate 0 $STEPS $SAVED_COLOR $2 $3  $i) ;;
+            *)
+                show_help 1 ;;
+        esac
         set_bulb_color $light $NEW_COLOR 
         sleep $SLEEP
-    done
-    
-    :
+    done    
 }
 
 hue_pulse () {
@@ -156,6 +204,16 @@ hue_pulse () {
     set_bulb_color $*
     sleep $SLEEP;
     set_bulb_color $1 $SAVED_COLOR
+}
+
+clone_light () {
+HELPTEXT="
+hue clone LIGHT - set light as current LIGHT
+"
+    if [ "$1" = "" ] ; then
+        show_help 1
+    fi
+    set_color $(get_color $1)
 }
 
 blink () { # uses $LIGHTS and $light
@@ -204,7 +262,7 @@ hue blink
 	    ;;
     esac
 		
-
+    mandatory_lights
     for light in $LIGHTS ; do 	
       set_light on
     done
@@ -274,9 +332,28 @@ hue fade
 
 get_color () { # one light only
 
+    if [ "$1" = "" ] ; then
+        show_help 1
+    fi
+
     if [ "$DRY" = "1" ] ; then
-        feedback Faking light $1 is $RED_CORNER 111.
-        echo xy $RED_CORNER 111
+        case $DRY_SCHEMA in 
+            xy)
+                feedback Faking light $1 is $RED_CORNER 111.
+                echo xy $RED_CORNER 111
+                ;;
+            ct)
+                feedback Faking light $1 is ct 200 111.
+                echo ct 200 111
+                ;;
+            hue)
+                feedback Faking light $1 is hue 45000 150 111.
+                echo hue 45000 150 111
+                ;;
+            *)
+                show_help 1
+                ;;
+        esac
         return 
     fi
     L=$( get_lights_json $1 )
@@ -299,6 +376,10 @@ get_color () { # one light only
 	    ct=$( echo $L | unjson '{state}{ct}' )
 	    bri=$( echo $L | unjson '{state}{bri}' )
 	    echo ct $ct $bri
+            ;;
+        *)
+            show_help 1
+            ;;
     esac
 }
 
@@ -352,25 +433,31 @@ set_light () {
     HELPTEXT="
 hue light on|off
 "
-   
+
+    if [ "$1" = "" ] ; then
+        show_help 1
+    fi
+
     ONOFF=$1
-
-    shift
-
-    for light in $LIGHTS ; do
-
     case  $ONOFF in
         on)
-            feedback setting light on
-            polite_curl -s -X PUT -d '{"on":true}' http://$bridge_ip/api/$user_key/lights/$light/state ;;
+            mandatory_lights
+            for light in $LIGHTS ; do
+                feedback setting light $light on
+                polite_curl -s -X PUT -d '{"on":true}' http://$bridge_ip/api/$user_key/lights/$light/state 
+            done
+            ;;
         off)
-            feedback setting light off
-            polite_curl -s -X PUT -d '{"on":false}' http://$bridge_ip/api/$user_key/lights/$light/state ;;
+            mandatory_lights
+            for light in $LIGHTS ; do
+                feedback setting light $light off
+                polite_curl -s -X PUT -d '{"on":false}' http://$bridge_ip/api/$user_key/lights/$light/state 
+            done
+            ;;
         *)
             show_help 1
     esac
-
-  done
+    
 }
 
 my_loop () { 
@@ -385,8 +472,16 @@ my_loop () {
 
 
 set_brightness () { 
+
+    HELPTEXT="
+hue set brightness {brightness:1-254} - setting brightnes
+"
+    
+    if [ "$1" = "" ] ; then
+        show_help 1
+    fi    
     BRIGHTNESS=$1
-    shift
+    mandatory_lights
     feedback setting brightness to $BRIGHTNESS    
     for light in $LIGHTS ; do
         polite_curl -s -X PUT -d '{"bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state 
@@ -401,6 +496,7 @@ hue set color hue {hue:0-65535} {saturation:1-200} {brightness:1-254}
     if [ "$3" = "" ] ; then
         show_help 1
     fi    
+    mandatory_lights
     feedback setting hue to $*
     polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$2',"bri":'$3'}' http://$bridge_ip/api/$user_key/lights/$light/state     
 }
@@ -413,6 +509,7 @@ hue set color xy {x} {y} {brightness:1-254}
     if [ "$3" = "" ] ; then
         show_help 1
     fi    
+    mandatory_lights
     feedback setting CIE color of light $light to $*
     polite_curl -s -X PUT -d '{"on":true, "xy":['$1', '$2'], "bri":'$3'}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
@@ -425,26 +522,32 @@ hue set color ct  {mirek:153-500} {brightness:1-254}
     if [ "$2" = "" ] ; then
         show_help 1
     fi    
-
+    mandatory_lights
     feedback setting mirek to $*
     polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
-
-
     
 set_color () { 
-    for light in $LIGHTS ; do 
-        set_bulb_color $light $*
-    done
-}
-
-set_bulb_color () {
     HELPTEXT="
 hue set color 
           hue {hue:0-65000} {saturation:1-200} {brightness:1-254}
           xy  {x} {y} {brightness:1-254}
           ct  {mirek:153-500} {brightness:1-254}
 "
+    case $1 in 
+        xy|ct|hue)            
+            mandatory_lights
+            for light in $LIGHTS ; do 
+                set_bulb_color $light $*
+            done
+            ;;
+        *)
+            show_help 1
+            ;;
+    esac
+}
+
+set_bulb_color () {
     light=$1
     shift
     schema=$1
@@ -469,7 +572,14 @@ hue set color
 
 
 set_saturation () { 
-
+    HELPTEXT="
+hue set saturation {saturation:1-200} - setting saturation
+"
+    
+    if [ "$1" = "" ] ; then
+        show_help 1
+    fi    
+    mandatory_lights
     feedback setting saturation to $* 
     for light ; do
         polite_curl -s -X PUT -d '{"sat":'$v'}' http://$bridge_ip/api/$user_key/lights/$light/state 
@@ -478,7 +588,7 @@ set_saturation () {
 
 
 show_sequence () { 
-
+    #TODO: help
     while read one two three four ; do 
         case one in
             xy) 
@@ -509,17 +619,18 @@ show_sequence () {
 
 
 sunrise () { 
+    #TODO: help, internal interpolation
     echo -e "$SUNRISE" |$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
 }
 
 
 sunset () { 
+    #TODO: help, internal interpolation
     echo  -e "$SUNRISE" | tac |$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
     set_light off 
 }
 
 set_value() {
-
     HELPTEXT="
 hue set 
        brightness value - set brightness (1-254)
@@ -600,6 +711,7 @@ Usage:
       -h|--help      -- this help
       -k|--key       -- user key for the bridge
       -l|--light     -- light to change (add -l for every light or list in quoted string)
+                        --light is MANDATORY for some commands
       -p|--period    -- period for blinks in seconds (default ${SLEEP}s)
       -r|--responses -- show http responses from the bridge
       -s|--steps     -- number of steps in transitions
@@ -611,7 +723,7 @@ Usage:
         for   - start blinking for some time
         once  - just blink once
         times - blink number of times
-      clone   - set light as another light 
+      clone LIGHT - set light as another light 
       fade 
         until - fade away until date/time #TODO
         for   - fade away for some time #TODO
@@ -622,7 +734,7 @@ Usage:
         onoff LIGHT - get on/of status of the light LIGHT
         color LIGHT - get color description of the light LIGHT
       is
-        on - return \"light is on\" status (0/1 - true/false) # TODO
+        on - return \"light is on\" status (0/1 - true/false) 
       loop #TODO
         mode  - start color loop mode #TODO
         custom  - start custom color loop #TODO
@@ -637,10 +749,15 @@ Usage:
         light 
           on       - turn on the light
           off      - turn off the light
-      show    - show sequence #TODO
-      sunset  - show sunset sequence #TODO
-      sunrise - show sunrise sequence #TODO
-      transit - gently transit to new color #TODO
+      show    - show sequence 
+      sunset  - show sunset sequence 
+      sunrise - show sunrise sequence 
+      transit - gently transit to new color 
+
+LIGHT - number of light source
+COLOR - color description: run 
+  $(basename $0) set color 
+for help on describing color
 "
 
 mandatory_lights () {
@@ -651,8 +768,12 @@ mandatory_lights () {
 }
 
 show_help () {
-  echo "$HELPTEXT"
-  exit $1
+    if [ "$1" = "0" ] ; then
+        echo "$HELPTEXT" 
+    else
+        echo "$HELPTEXT" >&2 
+    fi
+    exit $1
 }
 
 while true ; do
@@ -660,7 +781,12 @@ while true ; do
         -b|--bridge)
             bridge_ip="$2"; shift 2;;
         -d|--dry)
-            DRY=1; shift ;;
+            DRY=1; 
+            if [ "$2" != "" ] ; then
+                DRY_SCHEMA=$2
+            fi
+            shift 2;
+            ;;
         -h|--help)
             show_help 0 ;;
         -k|--key)
@@ -694,6 +820,12 @@ if [ "$cmd" = "" ] ; then
     exit 1
 fi
 case $cmd in
+    alert)
+	alert 
+	;;
+    blink)
+	blink $*
+	;;
     scan)
 	discover_bridge
 	exit 0
@@ -708,17 +840,14 @@ case $cmd in
 	dump_data
 	exit 0
 	;;
+    set)
+	set_value $*
+	;;
     *)
 	mandatory_lights
 	case $cmd in
-	    alert)
-		alert 
-		;;
-	    blink)
-		blink $*
-		;;
-	    clone)
-		set_color $(get_color $1)
+	    clone)                
+                clone_light $1
 		;;
 	    fade)
 		fade $*
@@ -738,9 +867,6 @@ case $cmd in
 		    hue_pulse $l $* &
                 done
                 wait
-		;;
-	    set)
-		set_value $*
 		;;
 	    show)
 		show_sequence 
