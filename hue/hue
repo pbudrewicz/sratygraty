@@ -99,7 +99,7 @@ interpolate () {
           FROM2=$5
           FROMB=$6
           TO1=$7
-          RCOLORY=$8
+          TO2=$8
           TOB=$9
           VALUE=${10}
           ;;
@@ -130,7 +130,7 @@ interpolate () {
 }
 
 deb () {
-   : echo "$@" >&2
+   echo "$@" >&2
 }
 
 calc () {
@@ -172,6 +172,9 @@ hue transit {color} {brightness} - must be in currently used schema
     light=$1
     shift
     schema=$1
+    if [ "$schema" = "" ] ; then
+	show_help 1
+    fi
     SAVED_COLOR=$( get_color $light )
     SAVED_SCHEMA=$( first $SAVED_COLOR )
     if [ "$schema" != "$SAVED_SCHEMA" ] ; then
