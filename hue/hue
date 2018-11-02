@@ -10,6 +10,7 @@ DRY_SCHEMA="xy" # default schema when faking bridge interactions
 LIGHTS="" # light list 
 SLEEP=0.7 # sleeping time for blinking etc.
 STEPS="10" # number of steps in transitions
+EXP="0" # linear (not exponential) brightness
 
 # bulb gamut parameters
 RED_CORNER="0.6915 0.3083"
@@ -29,7 +30,20 @@ SUNRISE="0.68 0.3 1
 0.32 0.33 145
 0.31 0.32 254"
 
-TEMP=$( getopt -o b:d::hk:l:p:rs:v:: --long bridge:,dry::,help,key:,light:,period:,responses,steps:,verbose:: -n $0 -- "$@" )
+LINEAR_SUNRISE="0.68 0.3 1
+0.62 0.37 26
+0.57 0.4  51
+0.52 0.41 76
+0.5 0.41  102
+0.48 0.41 127
+0.43 0.40 152
+0.4 0.38  178
+0.37 0.35 203
+0.32 0.33 228
+0.31 0.32 254"
+
+
+TEMP=$( getopt -o b:d::ehk:l:p:rs:v:: --long bridge:,dry::,exp,help,key:,light:,period:,responses,steps:,verbose:: -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -90,51 +104,61 @@ interpolate () {
     #  feedback interpolating $@
 
   deb "$@"
-  FROM0=$1
-  TO0=$2
-
-  case $3 in 
+  STEPS=$1
+  SCHEMA=$2
+  
+  case $SCHEMA in 
       xy|hue)
-          FROM1=$4
-          FROM2=$5
-          FROMB=$6
-          TO1=$7
-          TO2=$8
-          TOB=$9
-          VALUE=${10}
-          ;;
-      ct)
-          FROM1=$4
+          FROM1=$3
+          FROM2=$4
           FROMB=$5
           TO1=$6
-          TOB=$7
-          VALUE=$8
-          ;;
-  esac
-  FRAC=$( calc "( $VALUE  - $FROM0 ) / ( $TO0 - $FROM0 )" )
-  deb frac:$FRAC
-  VAL1=$( calc "$FROM1 + $FRAC * ($TO1 - $FROM1)")
-  deb x:$VAL1
-  BRI=$( calc "$FROMB + $FRAC * ($TOB - $FROMB)" | sed s/\\..*// )
-  deb b:$BRI
-  case $3 in 
-      xy|hue)
-          VAL2=$( calc "$FROM2 + $FRAC * ($TO2 - $FROM2)" )
-          deb y:$VAL2
-          echo $3 $VAL1 $VAL2 $BRI
+          TO2=$7
+          TOB=$8
+	  STEP=$9
           ;;
       ct)
-          echo $3 $VAL1 $BRI
+          FROM1=$3
+          FROMB=$4
+          TO1=$5
+          TOB=$6
+	  STEP=$7
+          ;;
+  esac
+  deb F1:$FROM1 T1:$TO1 STEPS:$STEPS STEP:$STEP
+  if [ "$EXP" = "1" ] ; then
+      BRI=$( calc "((($TOB / $FROMB) ** (1.0/$STEPS)) ** $STEP ) * $FROMB" | sed s/\\..*// )
+  else
+      BRI=$( calc "($TOB - $FROMB)/$STEPS * $STEP + $FROMB" | sed s/\\..*// )
+  fi
+  deb b:$BRI
+  case $SCHEMA in 
+      xy)
+	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
+	  VAL2=$( calc "($TO2 - $FROM2)/$STEPS * $STEP + $FROM2" )
+          deb x:$VAL1 y:$VAL2
+          echo $SCHEMA $VAL1 $VAL2 $BRI
+          ;;
+      hue)
+	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" | sed s/\\..*// )
+	  VAL2=$( calc "($TO2 - $FROM2)/$STEPS * $STEP + $FROM2" | sed s/\\..*// )
+          deb hue:$VAL sat:$VAL2
+          echo $SCHEMA $VAL1 $VAL2 $BRI
+          ;;
+      ct)
+	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" | sed s/\\..*// )
+	  deb mirek:$VAL1
+          echo $SCHEMA $VAL1 $BRI
           ;;
   esac
 }
 
 deb () {
-   echo "$@" >&2
+ :  echo "$@" >&2
 }
 
 calc () {
-    RES="$( echo "$@" | bc -l )"
+    RES="$( echo "print ($@)" | perl )"
     printf "%f" $RES
 }
 
@@ -166,7 +190,6 @@ transit_to_color () {
 
 HELPTEXT="
 hue transit {color} {brightness} - must be in currently used schema
-
 "
 
     light=$1
@@ -188,12 +211,12 @@ hue transit {color} {brightness} - must be in currently used schema
                 if [ "$4" = "" ] ; then
                     show_help 1
                 fi
-                NEW_COLOR=$( interpolate 0 $STEPS $SAVED_COLOR $2 $3 $4 $i) ;;            
+                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3 $4 $i) ;;            
             ct)
                 if [ "$3" = "" ] ; then
                     show_help 1
                 fi
-                NEW_COLOR=$( interpolate 0 $STEPS $SAVED_COLOR $2 $3  $i) ;;
+                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3  $i) ;;
             *)
                 show_help 1 ;;
         esac
@@ -526,7 +549,7 @@ hue set color ct  {mirek:153-500} {brightness:1-254}
         show_help 1
     fi    
     mandatory_lights
-    feedback setting mirek to $*
+    feedback setting light $light to  mirek $*
     polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
     
@@ -555,7 +578,6 @@ set_bulb_color () {
     shift
     schema=$1
     shift
-
     case $schema in
 	xy)	
             set_xy $*
@@ -623,13 +645,21 @@ show_sequence () {
 
 sunrise () { 
     #TODO: help, internal interpolation
-    echo -e "$SUNRISE" |$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
+    if [ "$EXP" = "1" ] ; then
+	echo -e "$SUNRISE" |$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
+    else
+	echo -e "$LINEAR_SUNRISE" |$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
+    fi
 }
 
 
 sunset () { 
     #TODO: help, internal interpolation
-    echo  -e "$SUNRISE" | tac |$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
+    if [ "$EXP" = "1" ] ; then
+	echo -e "$SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
+    else
+	echo -e "$LINEAR_SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
+    fi
     set_light off 
 }
 
@@ -707,10 +737,11 @@ hue get
 
 HELPTEXT="
 Usage: 
-  hue [-b bridge_ip][-d][-h][-k user_key][[-l number] ... ][-p period][-r][-s steps][[-v[level]] ... ] command
+  hue [-b bridge_ip][-d][-e][-h][-k user_key][[-l number] ... ][-p period][-r][-s steps][[-v[level]] ... ] command
     Options are:
       -b|--bridge_ip -- IP address of the hue bridge device
       -d|--dry       -- dry run, do not bother the bridge
+      -e|--exp       -- exponential brightness changes in sequencess or transitions
       -h|--help      -- this help
       -k|--key       -- user key for the bridge
       -l|--light     -- light to change (add -l for every light or list in quoted string)
@@ -790,6 +821,8 @@ while true ; do
             fi
             shift 2;
             ;;
+	-e|--exp)
+	    EXP="1"; shift ;;
         -h|--help)
             show_help 0 ;;
         -k|--key)
@@ -829,6 +862,9 @@ case $cmd in
     blink)
 	blink $*
 	;;
+    color)
+	set_color $*
+	;;
     scan)
 	discover_bridge
 	exit 0
@@ -843,7 +879,7 @@ case $cmd in
 	dump_data
 	exit 0
 	;;
-    set)
+    set)	
 	set_value $*
 	;;
     *)
