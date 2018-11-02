@@ -4,15 +4,18 @@
 
 . $( dirname $0 )/user.key 
 VERBOSE=0
-SHOW_RESPONSES=0
-DRY=0
-LIGHTS=""
-SLEEP=0.7
+SHOW_RESPONSES=0 # show curl responses
+DRY=0 # do not run curl
+LIGHTS="" # light list 
+SLEEP=0.7 # sleeping time for blinking etc.
+STEPS="10" # number of steps in transitions
 
+# bulb gamut parameters
 RED_CORNER="0.6915 0.3083"
 GREEN_CORNER="0.17 0.7"
 BLUE_CORNER="0.1532 0.0475"
 
+# sunrise color arch and brightnes sequence
 SUNRISE="0.68 0.3 1
 0.62 0.37 1
 0.57 0.4  3
@@ -25,7 +28,7 @@ SUNRISE="0.68 0.3 1
 0.32 0.33 145
 0.31 0.32 254"
 
-TEMP=$( getopt -o b:dhk:l:p:rv:: --long bridge:,dry,help,key:,light:,period:,responses,verbose:: -n $0 -- "$@" )
+TEMP=$( getopt -o b:dhk:l:p:rs:v:: --long bridge:,dry,help,key:,light:,period:,responses,steps:,verbose:: -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -61,13 +64,13 @@ unjson () {
 
 feedback () {
     if [ "$VERBOSE" -gt "0" ] ; then
-        echo "$@"
+        echo "$@" 1>&2
     fi
 }
 
 polite_curl () {
-    if  [ "$VERBOSE" -gt "1" ] || [ "$DRY" = "1" ] || [ "$SHOW_RESPONSES" = "1" ]; then
-        echo "running curl $@"
+    if  [ "$VERBOSE" -gt "1" ] || [ "$SHOW_RESPONSES" = "1" ]; then
+        feedback "running curl $@"
     fi
     if [ "$DRY" = "1" ] ; then
         return
@@ -83,25 +86,32 @@ polite_curl () {
 
 interpolate () {
 
+    #  feedback interpolating $@
+
   deb "$@"
   LEFT=$1
   RIGHT=$2
-  LCOLORX=$3
-  LCOLORY=$4
-  RCOLORX=$5
-  RCOLORY=$6
-  VALUE=$7
+  LCOLORX=$4
+  LCOLORY=$5
+  LBRIGHTNESS=$6
+  RCOLORX=$7
+  RCOLORY=$8
+  RBRIGHTNESS=$9
+  VALUE=${10}
+  deb val:$VALUE
   FRAC=$( calc "( $VALUE  - $LEFT ) / ( $RIGHT - $LEFT )" )
   deb frac:$FRAC
   COLX=$( calc "$LCOLORX + $FRAC * ($RCOLORX - $LCOLORX)")
   deb x:$COLX
   COLY=$( calc "$LCOLORY + $FRAC * ($RCOLORY - $LCOLORY)" )
-  deb x:$COLY
-  echo $COLX $COLY
+  deb y:$COLY
+  BRI=$( calc "$LBRIGHTNESS + $FRAC * ($RBRIGHTNESS - $LBRIGHTNESS)" | sed s/\\..*// )
+  deb b:$COLY
+  echo xy $COLX $COLY $BRI
 }
 
 deb () {
-  : echo "$@" >&2
+   : echo "$@" >&2
 }
 
 calc () {
@@ -111,7 +121,7 @@ calc () {
 
 ### end math
 
-alert () { # uses $LIGHTS 
+alert () { 
     
     for light in $LIGHTS; do
         set_light on 
@@ -127,19 +137,25 @@ time_2_sec () {
 
 transit_to_color () {
     # gently change current color into new one
+    light=$1
+    shift
+    SAVED_COLOR=$( get_color $light )
+    #    SAVED_BRIGHTNESS=$( get_brightness $1 )
+    feedback transit from $SAVED_COLOR to $*
+    for i in $( seq 1 $STEPS ) ; do
+        NEW_COLOR=$( interpolate 0 $STEPS $SAVED_COLOR $2 $3 $4 $i)
+        set_bulb_color $light $NEW_COLOR 
+        sleep $SLEEP
+    done
     
     :
 }
 
 hue_pulse () {
-    for light in $LIGHTS ; do
-	SAVED_COLOR=$( get_color $light )
-	set_color $*
-    done
+    SAVED_COLOR=$( get_color $1 )
+    set_bulb_color $*
     sleep $SLEEP;
-    for light in $LIGHTS ; do 
-	set_color $SAVED_COLOR
-    done
+    set_bulb_color $1 $SAVED_COLOR
 }
 
 blink () { # uses $LIGHTS and $light
@@ -221,10 +237,6 @@ color_loop () {
         exit 0
     fi
 
-
-    . $( dirname $0 )/user.key 
-
-
     for light; do
         polite_curl -s -X PUT -d '{"effect":"'$effect'"}' http://$bridge_ip/api/$user_key/lights/$light/state 
     done
@@ -251,7 +263,7 @@ hue fade
 	    while [ $b -gt 0 ] ; do
 		set_brightness $b $light
 		sleep $SLEEP
-		b=$(( $b - 1 ))
+	        b=$(( $(  get_brightness $light) - 1 )) # we accept external changes...
 	    done 
 	    set_light off $light
 	} &
@@ -262,6 +274,11 @@ hue fade
 
 get_color () { # one light only
 
+    if [ "$DRY" = "1" ] ; then
+        feedback Faking light $1 is $RED_CORNER 111.
+        echo xy $RED_CORNER 111
+        return 
+    fi
     L=$( get_lights_json $1 )
     color_type=$( echo "$L" | unjson '{state}{colormode}' )
     on=$( echo "$L" | unjson '{state}{on}' )
@@ -286,6 +303,10 @@ get_color () { # one light only
 }
 
 get_brightness () { 
+    if [ "$DRY" = "1" ] ; then
+        echo 111
+        return
+    fi
     echo $(get_lights_json $1 | unjson '{state}{bri}' )
 }
 
@@ -392,7 +413,7 @@ hue set color xy {x} {y} {brightness:1-254}
     if [ "$3" = "" ] ; then
         show_help 1
     fi    
-    feedback setting CIE color to $*
+    feedback setting CIE color of light $light to $*
     polite_curl -s -X PUT -d '{"on":true, "xy":['$1', '$2'], "bri":'$3'}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
 
@@ -408,34 +429,42 @@ hue set color ct  {mirek:153-500} {brightness:1-254}
     feedback setting mirek to $*
     polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
+
+
     
 set_color () { 
+    for light in $LIGHTS ; do 
+        set_bulb_color $light $*
+    done
+}
 
+set_bulb_color () {
     HELPTEXT="
 hue set color 
           hue {hue:0-65000} {saturation:1-200} {brightness:1-254}
           xy  {x} {y} {brightness:1-254}
           ct  {mirek:153-500} {brightness:1-254}
 "
+    light=$1
+    shift
     schema=$1
     shift
 
-    for light in $LIGHTS ; do
-        case $schema in
-	    xy)	
-                set_xy $*
-                ;;
-            ct)
-                set_ct $*
-                ;;
-            hue)
-                set_hue $*
-                ;;
-            *)
-                show_help 1 
-                ;;            
-        esac
-    done
+    case $schema in
+	xy)	
+            set_xy $*
+            ;;
+        ct)
+            set_ct $*
+            ;;
+        hue)
+            set_hue $*
+            ;;
+        *)
+            show_help 1 
+            ;;            
+    esac
+    
 }
 
 
@@ -564,7 +593,7 @@ hue get
 
 HELPTEXT="
 Usage: 
-  hue [-b bridge_ip][-d][-h][-k user_key][[-l number] ... ][-p period][-r][[-v[level]] ... ] command
+  hue [-b bridge_ip][-d][-h][-k user_key][[-l number] ... ][-p period][-r][-s steps][[-v[level]] ... ] command
     Options are:
       -b|--bridge_ip -- IP address of the hue bridge device
       -d|--dry       -- dry run, do not bother the bridge
@@ -573,6 +602,7 @@ Usage:
       -l|--light     -- light to change (add -l for every light or list in quoted string)
       -p|--period    -- period for blinks in seconds (default ${SLEEP}s)
       -r|--responses -- show http responses from the bridge
+      -s|--steps     -- number of steps in transitions
       -v|--verbose   -- give feedback on taken actions (more -v increases level)
     Commands are:
       alert - one blink please
@@ -641,6 +671,8 @@ while true ; do
 	    SLEEP="$2"; shift 2;;
         -r|--responses)
             SHOW_RESPONSES=1;  shift ;;
+        -s|--steps)
+            STEPS="$2"; shift 2 ;;
         -v|--verbose)
             case "$2" in
                 "")
@@ -686,7 +718,7 @@ case $cmd in
 		blink $*
 		;;
 	    clone)
-		set_value color $(get_color $1)
+		set_color $(get_color $1)
 		;;
 	    fade)
 		fade $*
@@ -702,7 +734,10 @@ case $cmd in
 		lights on $*
 		;;
 	    pulse)
-		hue_pulse $*
+                for l in $LIGHTS ; do
+		    hue_pulse $l $* &
+                done
+                wait
 		;;
 	    set)
 		set_value $*
@@ -716,6 +751,12 @@ case $cmd in
 	    sunset)
                 sunset
 		;;
+            transit)
+                for l in $LIGHTS ; do
+                    transit_to_color $l $* &
+                done
+                wait
+                ;;
 	    *)
 		show_help 1
 		;;
