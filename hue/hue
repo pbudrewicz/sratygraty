@@ -648,7 +648,7 @@ sunrise () {
     if [ "$EXP" = "1" ] ; then
 	echo -e "$SUNRISE" |$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
     else
-	echo -e "$LINEAR_SUNRISE" |$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
+	echo -e "$LINEAR_SUNRISE" |$(dirname $0)/../scripts/interpolate.pl 10 %f %f %d  | show_sequence
     fi
 }
 
@@ -658,7 +658,7 @@ sunset () {
     if [ "$EXP" = "1" ] ; then
 	echo -e "$SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
     else
-	echo -e "$LINEAR_SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
+	echo -e "$LINEAR_SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl 10 %f %f %d  | show_sequence
     fi
     set_light off 
 }
