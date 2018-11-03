@@ -12,6 +12,10 @@ SLEEP=0.7 # sleeping time for blinking etc.
 STEPS="10" # number of steps in transitions
 EXP="0" # linear (not exponential) brightness
 
+CRAWLX=0.05
+CRAWLY=0.05
+CRAWLB=10
+
 # bulb gamut parameters
 RED_CORNER="0.6915 0.3083"
 GREEN_CORNER="0.17 0.7"
@@ -127,9 +131,9 @@ interpolate () {
   esac
   deb F1:$FROM1 T1:$TO1 STEPS:$STEPS STEP:$STEP
   if [ "$EXP" = "1" ] ; then
-      BRI=$( calc "((($TOB / $FROMB) ** (1.0/$STEPS)) ** $STEP ) * $FROMB" | sed s/\\..*// )
+      BRI=$( calc %d "((($TOB / $FROMB) ** (1.0/$STEPS)) ** $STEP ) * $FROMB" )
   else
-      BRI=$( calc "($TOB - $FROMB)/$STEPS * $STEP + $FROMB" | sed s/\\..*// )
+      BRI=$( calc %d "($TOB - $FROMB)/$STEPS * $STEP + $FROMB" ) 
   fi
   deb b:$BRI
   case $SCHEMA in 
@@ -140,13 +144,13 @@ interpolate () {
           echo $SCHEMA $VAL1 $VAL2 $BRI
           ;;
       hue)
-	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" | sed s/\\..*// )
-	  VAL2=$( calc "($TO2 - $FROM2)/$STEPS * $STEP + $FROM2" | sed s/\\..*// )
+	  VAL1=$( calc %d "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
+	  VAL2=$( calc %d "($TO2 - $FROM2)/$STEPS * $STEP + $FROM2" ) 
           deb hue:$VAL sat:$VAL2
           echo $SCHEMA $VAL1 $VAL2 $BRI
           ;;
       ct)
-	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" | sed s/\\..*// )
+	  VAL1=$( calc %d "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
 	  deb mirek:$VAL1
           echo $SCHEMA $VAL1 $BRI
           ;;
@@ -158,8 +162,16 @@ deb () {
 }
 
 calc () {
-    RES="$( echo "print ($@)" | perl )"
-    printf "%f" $RES
+    case $1 in
+	%f|%d)
+	    fmt=$1
+	    shift
+	    ;;
+	*)
+	    fmt="%f"
+	    ;;
+    esac
+    echo -n $( echo "printf (\"$fmt\", $@)" | perl )
 }
 
 ### end math
@@ -326,6 +338,40 @@ color_loop () {
     done
 }
 
+random () {
+    if [ "$1" = "" ] ; then
+	RANGE=1
+    else
+	RANGE=$1
+    fi
+    calc "$RANDOM / 32767 * $RANGE"
+}
+
+adjust_color () {
+
+    SCHEMA=$1
+    BX=$2; BY=$3; BB=$4
+    DX=$5; DY=$6; DB=$7
+    
+    echo $SCHEMA $( calc $BX + $DX ) $( calc $BY + $DY ) $( calc %d $BB + $DB )
+}
+
+crawl () {
+    HELPTEXT="
+hue crawl [x [y [b]] ] -- crawl color in CIE space in x and y range 
+                     default y = x; x = 0.05; b=10
+"
+
+    BASE_COLOR=$( get_color $1 )
+    for i in $(seq 1 10 ) ; do
+	X=$( calc $( random $CRAWLX ) - $CRAWLX / 2 )
+	Y=$( calc $( random $CRAWLY ) - $CRAWLY / 2 )
+	B=$( calc $( random $CRAWLB ) - $CRAWLB / 2 )
+	set_bulb_color $1 $( adjust_color $BASE_COLOR $X $Y $B ) 
+	sleep $SLEEP
+    done
+    
+}
 
 fade () { 
 
@@ -758,6 +804,7 @@ Usage:
         once  - just blink once
         times - blink number of times
       clone LIGHT - set light as another light 
+      crawl   - make random changes in colors #TODO
       fade 
         until - fade away until date/time #TODO
         for   - fade away for some time #TODO
@@ -864,6 +911,13 @@ case $cmd in
 	;;
     color)
 	set_color $*
+	;;
+    crawl)
+	mandatory_lights
+	for light in $LIGHTS ; do
+	    crawl $light &
+	done
+	wait
 	;;
     scan)
 	discover_bridge
