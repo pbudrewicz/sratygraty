@@ -366,10 +366,12 @@ hue crawl [x [y [b]] ] -- crawl color in CIE space in x and y range
     for i in $(seq 1 10 ) ; do
 	X=$( calc $( random $CRAWLX ) - $CRAWLX / 2 )
 	Y=$( calc $( random $CRAWLY ) - $CRAWLY / 2 )
+#	Y=$( calc $CRAWLX - X )
 	B=$( calc $( random $CRAWLB ) - $CRAWLB / 2 )
-	set_bulb_color $1 $( adjust_color $BASE_COLOR $X $Y $B ) 
+	transit_to_color $1 $( adjust_color $BASE_COLOR $X $Y $B ) 
 	sleep $SLEEP
     done
+    transit_to_color $1 $BASE_COLOR
     
 }
 
@@ -692,9 +694,9 @@ show_sequence () {
 sunrise () { 
     #TODO: help, internal interpolation
     if [ "$EXP" = "1" ] ; then
-	echo -e "$SUNRISE" |$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
+	echo -e "$SUNRISE" |$(dirname $0)/../scripts/interpolate.pl $STEPS %f %f *%d  | show_sequence
     else
-	echo -e "$LINEAR_SUNRISE" |$(dirname $0)/../scripts/interpolate.pl 10 %f %f %d  | show_sequence
+	echo -e "$LINEAR_SUNRISE" |$(dirname $0)/../scripts/interpolate.pl $STEPS %f %f %d  | show_sequence
     fi
 }
 
@@ -702,9 +704,9 @@ sunrise () {
 sunset () { 
     #TODO: help, internal interpolation
     if [ "$EXP" = "1" ] ; then
-	echo -e "$SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl 10 %f %f *%d  | show_sequence
+	echo -e "$SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl $STEPS %f %f *%d  | show_sequence
     else
-	echo -e "$LINEAR_SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl 10 %f %f %d  | show_sequence
+	echo -e "$LINEAR_SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl $STEPS %f %f %d  | show_sequence
     fi
     set_light off 
 }
@@ -803,6 +805,7 @@ Usage:
         for   - start blinking for some time
         once  - just blink once
         times - blink number of times
+      chase   - make lights chase each other colors #TODO
       clone LIGHT - set light as another light 
       crawl   - make random changes in colors #TODO
       fade 
