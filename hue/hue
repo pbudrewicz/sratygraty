@@ -364,8 +364,11 @@ hue crawl [x [y [b]] ] -- crawl color in CIE space in x and y range
 
     BASE_COLOR=$( get_color $1 )
     for i in $(seq 1 10 ) ; do
-	X=$( calc $( random $CRAWLX ) - $CRAWLX / 2 )
-	Y=$( calc $( random $CRAWLY ) - $CRAWLY / 2 )
+        R=$( random 6.283 )
+        X=$( calc "$CRAWLX * sin( $R ) " )
+        Y=$( calc "$CRAWLX * cos( $R ) " )
+	echo $X:$Y
+#kj	Y=$( calc $( random $CRAWLY ) - $CRAWLY / 2 )
 #	Y=$( calc $CRAWLX - X )
 	B=$( calc $( random $CRAWLB ) - $CRAWLB / 2 )
 	transit_to_color $1 $( adjust_color $BASE_COLOR $X $Y $B ) 
