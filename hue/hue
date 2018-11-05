@@ -956,10 +956,10 @@ case $cmd in
 	    my_loop)
 		;;
 	    off)
-		lights off $*
+		set_light off $*
 		;;
 	    on)
-		lights on $*
+		set_light on $*
 		;;
 	    pulse)
                 for l in $LIGHTS ; do
