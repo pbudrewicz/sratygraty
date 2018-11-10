@@ -119,6 +119,11 @@ show_condition () {
 	    feedback ...snowing...
 	    hue -l $light pulse xy $WHITE_COLOR 200 -p 0.5 $VERBOSITY
             ;;
+        Clouds)
+	    sleep 1
+	    feedback ...clouds...
+	    hue -l $light pulse xy $VIOLET_COLOR 1 -p 0.5  $VERBOSITY
+	    ;;
         Mist)
 	    sleep 1
 	    feedback ...fog...
@@ -164,7 +169,7 @@ forecast_show () {
     done
     feedback MAX T = $MAX_TEMP at $MAX_DATE
     hue -l $light set color xy $( temp2color.sh $MAX_TEMP ) 200 $VERBOSITY
-    sleep 1
+    sleep 3
     if [ "$GLIMPSE" = "1" ] ; then
         hue -l $light set color $SAVED_COLOR $VERBOSITY
     fi
