@@ -9,7 +9,7 @@ eval set -- "$TEMP"
 show_help () {
     echo "
 Usage:
-   $0  (-f|-w)[-d][-D DATE][-i ID][-l LOCATION][-L #][-r][-s][-h]
+   $0  (-f|-w)[-d][-D DATE][-i ID][-L LOCATION][-l #][-r][-s][-h]
     Options are
       -d|--data     - grab data only
       -D|--date     - show data for DATE
@@ -17,8 +17,8 @@ Usage:
       -g|--glimpse  - glimpse only - leave light as it was
       -h|--help     - show this help
       -i|--id       - show data for city with this ID
-      -l|--location - show data for this LOCATION
-      -L|--light    - use light number # (can be used many times)
+      -L|--location - show data for this LOCATION
+      -l|--light    - use light number # (can be used many times)
       -r|--refresh  - refresh data before show
       -s|--silent   - run silently (no curl feedback)
       -w|--weather  - show current weather
@@ -35,6 +35,7 @@ LIGHTS="3" # funny, isn't it?
 THE_DAY=$( date +%Y-%m-%d )
 GLIMPSE=0
 VERBOSE=0
+VERBOSITY=""
 PATH=$PATH:~/sratygraty/scripts:~/sratygraty/hue:~/sratygraty/weather
 DATA_CACHE=/tmp/weather_fun_info.dat
 DIR=$( dirname $0 )
@@ -72,7 +73,7 @@ is_the_day () {
 while true ; do
     case "$1" in
         -d|--data)
-            SHOW_TYPE=none
+            SHOW_TYPE=data # #TODO: rethink
             REFRESH=1; shift ;;
         -D|--date)
             THE_DAY=$( date --date "$2" +%Y-%m-%d )
@@ -81,10 +82,10 @@ while true ; do
             DATA_TYPE=forecast; shift;;
         -g|--glimpse)
             GLIMPSE=1; shift ;;
-        -l|--location)
+        -L|--location)
             LOCATION="$2"; shift 2
             MODE=location;;
-        -L|--light)
+        -l|--light)
             LIGHTS="$LIGHTS $2"; shift 2;;
         -h|--help)
             show_help 0;;
@@ -96,7 +97,7 @@ while true ; do
         -s|--silent)
             SILENT="-s"; shift;;
         -v|--verbose)
-            VERBOSE=1 ; shift ;;
+            VERBOSE=1 ; VERBOSITY="-v" ; shift ;;
         -w|--weather)
             DATA_TYPE=weather; shift ;;
         --) 
@@ -111,17 +112,17 @@ show_condition () {
         Rain)
             sleep 1
             feedback ...raining...
-            hue -l $light pulse xy $BLUE_COLOR 100 -p 0.5
+            hue -l $light pulse xy $BLUE_COLOR 100 -p 0.5 $VERBOSITY
             ;;
         Snow)
 	    sleep 1
 	    feedback ...snowing...
-	    hue -l $light pulse xy $WHITE_COLOR 200 -p 0.5
+	    hue -l $light pulse xy $WHITE_COLOR 200 -p 0.5 $VERBOSITY
             ;;
         Mist)
 	    sleep 1
 	    feedback ...fog...
-	    hue -l $light pulse xy $WHITE_COLOR 1 -p 0.5 
+	    hue -l $light pulse xy $WHITE_COLOR 1 -p 0.5  $VERBOSITY
             ;;
     esac
 }
@@ -129,8 +130,9 @@ show_condition () {
 
 forecast_show () {
     light=$1
-    SAVED_COLOR=$( hue -l $light get color )
-    hue -l $light set color xy 0.35 0.35 1 
+    SAVED_COLOR=$( hue get color $light )
+    hue -l $light set color xy 0.35 0.35 1  $VERBOSITY
+    feedback Showing data for lat:$( weather show '{city}{coord}{lat}' ) lon:$( weather show '{city}{coord}{lon}' )
     sleep 3
     
     MAX_TEMP=-50
@@ -144,7 +146,7 @@ forecast_show () {
         if ! is_the_day $date ; then continue ; fi 
 
         COLOR=$( temp2color.sh $T)
-        hue -l $light set color xy $COLOR 200
+        hue -l $light set color xy $COLOR 200 $VERBOSITY
         sleep 1
 
         CONDITION_COUNT=$( weather count "{list}[$i]{weather}" )
@@ -161,10 +163,10 @@ forecast_show () {
         fi	
     done
     feedback MAX T = $MAX_TEMP at $MAX_DATE
-    hue -l $light set color xy $( temp2color.sh $MAX_TEMP ) 200 -v
+    hue -l $light set color xy $( temp2color.sh $MAX_TEMP ) 200 $VERBOSITY
     sleep 1
     if [ "$GLIMPSE" = "1" ] ; then
-        hue -l $light set color $SAVED_COLOR
+        hue -l $light set color $SAVED_COLOR $VERBOSITY
     fi
     
 }
@@ -194,6 +196,7 @@ case $SHOW_TYPE in
         for light in $LIGHTS ; do
             forecast_show $light &
         done
+	wait
         ;;
     data)
         cat $DATA_CACHE
