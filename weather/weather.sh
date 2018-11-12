@@ -28,10 +28,10 @@ Usage:
 
 LOCATION="Warsaw,PL"
 DATA_TYPE="weather"
-SHOW_TYPE="forecast"
+SHOW_TYPE="weather"
 SILENT=""
 ID=756135
-LIGHTS="3" # funny, isn't it?
+LIGHTS="" # funny, isn't it?
 THE_DAY=$( date +%Y-%m-%d )
 GLIMPSE=0
 VERBOSE=0
@@ -79,7 +79,9 @@ while true ; do
             THE_DAY=$( date --date "$2" +%Y-%m-%d )
             shift 2;;
         -f|--forecast)
-            DATA_TYPE=forecast; shift;;
+            DATA_TYPE=forecast;
+	    SHOW_TYPE=forecast;
+	    shift;;
         -g|--glimpse)
             GLIMPSE=1; shift ;;
         -L|--location)
@@ -99,7 +101,9 @@ while true ; do
         -v|--verbose)
             VERBOSE=1 ; VERBOSITY="-v" ; shift ;;
         -w|--weather)
-            DATA_TYPE=weather; shift ;;
+            DATA_TYPE=weather;
+	    SHOW_TYPE=weather
+	    shift ;;
         --) 
             shift ; break ;;
         *) echo "Internal error!" ; exit 1 ;;
@@ -177,7 +181,26 @@ forecast_show () {
 }
 
 weather_show () {
-    :
+    light=$1
+    SAVED_COLOR=$( hue get color $light )
+    feedback Showing data for lat:$( weather show '{coord}{lat}' ) lon:$( weather show '{coord}{lon}' )
+    temperature=$( weather get "{main}{temp}" )
+    T=$( C_from_K $temperature )
+        COLOR=$( temp2color.sh $T)
+        hue -l $light set color xy $COLOR 200 $VERBOSITY
+        sleep 1
+    CONDITION_COUNT=$( weather count "{weather}" )
+    for c in $(seq 0 $(( $CONDITION_COUNT - 1 )) ) ; do
+	condition=$( weather get "{weather}[$c]{main}" )
+        show_condition $condition
+        feedback $date $condition $T 
+    done
+    sleep 3
+    if [ "$GLIMPSE" = "1" ] ; then
+        hue -l $light set color $SAVED_COLOR $VERBOSITY
+    fi
+      
+    
 }
 
 
@@ -185,12 +208,15 @@ weather_show () {
 if [ "$REFRESH" = "1" ] ; then
     case  $MODE in 
         location)
+	    feedback Getting $DATA_TYPE for $LOCATION
             curl ${SILENT} -X GET "api.openweathermap.org/data/2.5/${DATA_TYPE}?q=${LOCATION}&mode=json&APPID=$weather_key" 
             ;;
         id)
+	    feedback Getting $DATA_TYPE for location $ID
             curl ${SILENT} -X GET "api.openweathermap.org/data/2.5/${DATA_TYPE}?id=${ID}&mode=json&APPID=$weather_key"
             ;;
         *)
+	    feedback getting $DATA_TYPE for default place
             curl ${SILENT} -X GET "api.openweathermap.org/data/2.5/${DATA_TYPE}?lat=50.333673&lon=22.972408&mode=json&APPID=$weather_key"
             ;;
     esac > $DATA_CACHE
@@ -207,6 +233,10 @@ case $SHOW_TYPE in
         cat $DATA_CACHE
         ;;
     weather)
-        weather_show
+        for light in $LIGHTS ; do
+            weather_show $light &
+        done
+	wait
+
         ;;
 esac
