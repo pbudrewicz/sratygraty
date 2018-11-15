@@ -11,6 +11,7 @@ LIGHTS="" # light list
 SLEEP=0.7 # sleeping time for blinking etc.
 STEPS="10" # number of steps in transitions
 EXP="0" # linear (not exponential) brightness
+PERSIST=0 # shall we continue even if lights were turned off
 
 CRAWL=0.05
 CRAWLB=10
@@ -46,7 +47,7 @@ LINEAR_SUNRISE="0.68 0.3 1
 0.31 0.32 254"
 
 
-TEMP=$( getopt -o b:d::ehk:l:p:rs:v:: --long bridge:,dry::,exp,help,key:,light:,period:,responses,steps:,verbose:: -n $0 -- "$@" )
+TEMP=$( getopt -o b:d::ehk:l:p:Prs:v:: --long bridge:,dry::,exp,help,key:,light:,period:,persist,responses,steps:,verbose:: -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -58,6 +59,9 @@ dump_data () {
     echo DRY=$DRY
     echo LIGHTS=$LIGHTS
     echo SLEEP=$SLEEP
+    echo STEPS=$STEPS
+    echo EXP=$EXP
+    echo PERSIST=$PERSIST
 }
 
 scan_net () {
@@ -174,6 +178,17 @@ calc () {
 }
 
 ### end math
+do_we_give_up () {
+    if [ "$PERSIST" = "1" ] ; then return 0 ; fi
+    light=$1
+    if ! is_light_on $light ; then
+        feedback User turned the light off - giving up
+        set_color hue 45000 200 254
+        set_light off         
+        exit 0
+    fi
+}
+    
 
 alert () { # TODO: just one light! check with other (e.g. blink)
     
@@ -232,6 +247,7 @@ hue transit {color} {brightness} - must be in currently used schema
         esac
         set_bulb_color $light $NEW_COLOR 
         sleep $SLEEP
+        do_we_give_up $light
     done    
 }
 
@@ -252,7 +268,8 @@ hue clone LIGHT - set light as current LIGHT
     set_color $(get_color $1)
 }
 
-blink () { # uses $LIGHTS and $light
+blink () { # TODO: every procedure should use one light! 
+    #uses $LIGHTS and $light
     HELPTEXT="
 hue blink 
        until time
@@ -263,6 +280,7 @@ hue blink
 "
     cmd=$1
     shift
+    # $light set outside
     case $cmd in
 	[u]ntil) # until is a keyword and breaks emacs's and vim's formatting. LOL
 	    if [ "$1" = "" ] ; then
@@ -280,7 +298,7 @@ hue blink
 	    ;;
 	once)
 	    feedback blinking once
-	    alert
+	    alert $light
 	    exit 0
 	    ;;
 	times)
@@ -290,6 +308,7 @@ hue blink
 	    feedback blinking $1 times
 	    for i in $(seq 1 $1) ; do
 		alert ; sleep $SLEEP
+                do_we_give_up $light
 	    done
 	    exit 0
 	    ;;
@@ -299,20 +318,13 @@ hue blink
     esac
 		
     mandatory_lights
-    for light in $LIGHTS ; do 	
-      set_light on
-    done
+    set_light on
     sleep 1 # wait 4 reaction
 
     while [ $( date +%s )  -lt $UNTIL ] ; do        
-        for light in $LIGHTS; do            
-            if  is_light_on $light ; then 
-                alert $light
-            else
-                exit 0
-            fi            
-        done
+        alert $light
         sleep $SLEEP
+        do_we_give_up $light 
     done
 
 }
@@ -697,11 +709,7 @@ show_sequence () {
                 ;;
         esac           
         sleep $SLEEP
-        if ! is_light_on $light ; then
-            set_color hue 45000 200 254
-            set_light off 
-            exit 0
-        fi
+        do_we_give_up $light
     done 
 }
 
@@ -810,6 +818,7 @@ Usage:
       -l|--light     -- light to change (add -l for every light or list in quoted string)
                         --light is MANDATORY for some commands
       -p|--period    -- period for blinks in seconds (default ${SLEEP}s)
+      -P|--persist   -- keep changing lights even when they were turned off
       -r|--responses -- show http responses from the bridge
       -s|--steps     -- number of steps in transitions
       -v|--verbose   -- give feedback on taken actions (more -v increases level)
@@ -896,6 +905,8 @@ while true ; do
             LIGHTS="$LIGHTS $2"; shift 2;;
 	-p|--period)
 	    SLEEP="$2"; shift 2;;
+        -P|--persist)
+            PERSIST=1 ; shift ;;
         -r|--responses)
             SHOW_RESPONSES=1;  shift ;;
         -s|--steps)
@@ -925,7 +936,9 @@ case $cmd in
 	alert 
 	;;
     blink)
-	blink $*
+        for light in $LIGHTS ; do
+	    blink $* &
+        done
 	;;
     color)
 	set_color $*
