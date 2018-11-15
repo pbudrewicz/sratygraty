@@ -196,7 +196,6 @@ first ()
 }
 
 transit_to_color () {
-    # TODO: help
     # gently change current color into new one
 
 HELPTEXT="
@@ -215,7 +214,7 @@ hue transit {color} {brightness} - must be in currently used schema
         echo "Cannot transit from $SAVED_SCHEMA to $schema"
         exit 1
     fi
-    feedback transit from $SAVED_COLOR to $*
+    feedback transit from $SAVED_COLOR to $* in $STEPS steps
     for i in $( seq 1 $STEPS ) ; do
         case $schema in
             xy|hue)                                
