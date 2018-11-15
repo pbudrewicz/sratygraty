@@ -189,15 +189,20 @@ do_we_give_up () {
     fi
 }
     
+for_lights () {
+    mandatory_lights
+    for light in $LIGHTS ; do
+        $* &
+    done
+    wait
+}
 
 alert () { # TODO: just one light! check with other (e.g. blink)
     
     mandatory_lights
-    for light in $LIGHTS; do
-        set_light on 
-        feedback alert 
-        polite_curl -s -X PUT -d '{"alert":"select"}' http://$bridge_ip/api/$user_key/lights/$light/state 
-    done
+    set_light on 
+    feedback alert on light $light
+    polite_curl -s -X PUT -d '{"alert":"select"}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
 
 time_2_sec () {
@@ -216,9 +221,6 @@ transit_to_color () {
 HELPTEXT="
 hue transit {color} {brightness} - must be in currently used schema
 "
-
-    light=$1
-    shift
     schema=$1
     if [ "$schema" = "" ] ; then
 	show_help 1
@@ -252,10 +254,10 @@ hue transit {color} {brightness} - must be in currently used schema
 }
 
 hue_pulse () {
-    SAVED_COLOR=$( get_color $1 )
+    SAVED_COLOR=$( get_color $light )
     set_bulb_color $*
     sleep $SLEEP;
-    set_bulb_color $1 $SAVED_COLOR
+    set_bulb_color $light $SAVED_COLOR
 }
 
 clone_light () {
@@ -543,17 +545,13 @@ hue light on|off
     case  $ONOFF in
         on)
             mandatory_lights
-            for light in $LIGHTS ; do
-                feedback setting light $light on
-                polite_curl -s -X PUT -d '{"on":true}' http://$bridge_ip/api/$user_key/lights/$light/state 
-            done
+            feedback setting light $light on
+            polite_curl -s -X PUT -d '{"on":true}' http://$bridge_ip/api/$user_key/lights/$light/state 
             ;;
         off)
             mandatory_lights
-            for light in $LIGHTS ; do
-                feedback setting light $light off
-                polite_curl -s -X PUT -d '{"on":false}' http://$bridge_ip/api/$user_key/lights/$light/state 
-            done
+            feedback setting light $light off
+            polite_curl -s -X PUT -d '{"on":false}' http://$bridge_ip/api/$user_key/lights/$light/state 
             ;;
         *)
             show_help 1
@@ -689,6 +687,10 @@ hue set saturation {saturation:1-200} - setting saturation
 
 show_sequence () { 
     #TODO: help
+HELPTEXT="
+feed STDIN
+"
+
     while read one two three four ; do 
         case one in
             xy) 
@@ -933,15 +935,13 @@ if [ "$cmd" = "" ] ; then
 fi
 case $cmd in
     alert)
-	alert 
+        for_lights alert 
 	;;
     blink)
-        for light in $LIGHTS ; do
-	    blink $* &
-        done
+        for_lights blink $* 
 	;;
     color)
-	set_color $*
+        for_lights set_color $* 
 	;;
     chase)
 	mandatory_lights
@@ -981,38 +981,32 @@ case $cmd in
                 clone_light $1
 		;;
 	    fade)
-		fade $*
+                for_lights fade $* 
 		;;
 	    loop)
 		;;
 	    my_loop)
 		;;
 	    off)
-		set_light off $*
+                for_lights set_light off $* 
 		;;
 	    on)
-		set_light on $*
+		for_lights set_light on $* 
 		;;
 	    pulse)
-                for l in $LIGHTS ; do
-		    hue_pulse $l $* &
-                done
-                wait
+                for_lights hue_pulse $* 
 		;;
 	    show)
-		show_sequence 
+                for_lights $cmd $* 
 		;;
 	    sunrise)
-                sunrise
+                for_lights $cmd $*
 		;;
 	    sunset)
-                sunset
+                for_lights $cmd $*
 		;;
             transit)
-                for l in $LIGHTS ; do
-                    transit_to_color $l $* &
-                done
-                wait
+                for_lights transit_to_color $* 
                 ;;
 	    *)
 		show_help 1
