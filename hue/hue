@@ -182,7 +182,7 @@ do_we_give_up () {
     if [ "$PERSIST" = "1" ] ; then return 0 ; fi
     light=$1
     if ! is_light_on $light ; then
-        feedback User turned the light off - giving up
+        feedback User turned the light $light off - giving up
         set_color hue 45000 200 254
         set_light off         
         exit 0
@@ -255,7 +255,7 @@ hue transit {color} {brightness} - must be in currently used schema
 
 hue_pulse () {
     SAVED_COLOR=$( get_color $light )
-    set_bulb_color $*
+    set_bulb_color $light $*
     sleep $SLEEP;
     set_bulb_color $light $SAVED_COLOR
 }
@@ -602,7 +602,7 @@ hue set color hue {hue:0-65535} {saturation:1-200} {brightness:1-254}
 
 set_xy () {
     HELPTEXT="
-hue set color xy {x} {y} {brightness:1-254}
+CIE set color xy {x} {y} {brightness:1-254}
 
 "
     if [ "$3" = "" ] ; then
@@ -881,7 +881,8 @@ show_help () {
     if [ "$1" = "0" ] ; then
         echo "$HELPTEXT" 
     else
-        echo "$HELPTEXT" >&2 
+        echo "$HELPTEXT" >&2
+	echo bad command: "$0 $*" #TODO: if debug
     fi
     exit $1
 }
