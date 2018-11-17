@@ -136,10 +136,23 @@ show_condition () {
     esac
 }
 
+save_state () {
+    ONOFF_STATE=$( hue get onoff $light )
+    SAVED_COLOR=$( hue get color $light )
+}
+
+restore_state () {
+    if [ "$ONOFF_STATE" = "0" ] ; then
+	hue -l $light off
+    else
+	hue -l $light color $SAVED_COLOR
+    fi
+}
+    
 
 forecast_show () {
     light=$1
-    SAVED_COLOR=$( hue get color $light )
+    save_state
     hue -l $light set color xy 0.35 0.35 1  $VERBOSITY
     feedback Showing data for lat:$( weather show '{city}{coord}{lat}' ) lon:$( weather show '{city}{coord}{lon}' )
     sleep 3
@@ -175,14 +188,14 @@ forecast_show () {
     hue -l $light set color xy $( temp2color.sh $MAX_TEMP ) 200 $VERBOSITY
     sleep 3
     if [ "$GLIMPSE" = "1" ] ; then
-        hue -l $light set color $SAVED_COLOR $VERBOSITY
+        restore_state
     fi
     
 }
 
 weather_show () {
     light=$1
-    SAVED_COLOR=$( hue get color $light )
+    save_state
     feedback Showing data for lat:$( weather show '{coord}{lat}' ) lon:$( weather show '{coord}{lon}' )
     temperature=$( weather get "{main}{temp}" )
     T=$( C_from_K $temperature )
@@ -197,10 +210,8 @@ weather_show () {
     done
     sleep 3
     if [ "$GLIMPSE" = "1" ] ; then
-        hue -l $light set color $SAVED_COLOR $VERBOSITY
-    fi
-      
-    
+	restore_state 
+    fi          
 }
 
 
