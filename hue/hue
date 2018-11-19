@@ -194,10 +194,19 @@ maybe_give_up () {
         exit 0
     fi
 }
+
+maybe_help_needed () {
+    for word ; do
+        #        echo debug $word
+        if [ "$word" = "help" ] ; then
+            show_help 0
+        fi
+    done
+}
     
 for_lights () {
     for word ; do
-#        echo debug $word
+        #        echo debug $word
         if [ "$word" = "help" ] ; then
             $*
             exit 0
@@ -235,8 +244,10 @@ transit_to_color () {
 hue transit {to_color} {to_brightness} - must be in currently used schema
     transit from {from_color} {from_brightness} {to_color} {to_brightness} - color schema must be the same
 
-    for help on describing color run '$0 set color'
+    for help on describing color run '$(basename $0) color help'
 "
+
+    maybe_help_needed $*
 
     if [ "$1" = "from" ] ; then 
         shift
@@ -294,6 +305,10 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
 }
 
 hue_pulse () {
+    HELPTEXT="
+pulse help 
+" #TODO
+    maybe_help_needed $*
     SAVED_COLOR=$( get_color $light )
     set_bulb_color $light $*
     sleep $SLEEP;
@@ -916,7 +931,7 @@ Usage:
 
 LIGHT - number of light source
 COLOR - color description: run 
-  $(basename $0) set color 
+  $(basename $0) color help
 for help on describing color
 "
 
@@ -1022,12 +1037,18 @@ case $cmd in
 	dump_data
 	exit 0
 	;;
+    pulse)
+        for_lights hue_pulse $* 
+	;;
     set)	
 	set_value $*
 	;;
     show)
         for_lights show_sequence $* 
 	;;
+    transit)
+        for_lights transit_to_color $* 
+        ;;            
     *)
 	mandatory_lights
 	case $cmd in
@@ -1047,18 +1068,12 @@ case $cmd in
 	    on)
 		for_lights set_light on $* 
 		;;
-	    pulse)
-                for_lights hue_pulse $* 
-		;;
 	    sunrise)
                 for_lights $cmd $*
 		;;
 	    sunset)
                 for_lights $cmd $*
 		;;
-            transit)
-                for_lights transit_to_color $* 
-                ;;            
 	    *)
 		show_help 1
 		;;
