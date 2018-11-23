@@ -334,7 +334,6 @@ $0 pulse COLOR - switch to COLOR for a moment
     mandatory_lights
     SAVED_COLOR=$( get_color $light )
     set_bulb_color $light "$@"
-    echo saved $SAVED_COLOR
     sleep $SLEEP;  
     set_bulb_color $light $SAVED_COLOR
 }
@@ -812,11 +811,11 @@ set_bulb_color () { # this is Internal procedure not accessible
             ;;
         *)
             COLOR=$( describe_color $schema )
-            FAKE_xy="xy $COLOR"
+            FAKE_xy="xy $COLOR $1"
             if [ "$1" = "" ] ; then
                 show_help 1 no brightness 
             fi
-            set_xy xy $COLOR $*
+            set_xy $COLOR $*
             ;;
     esac
     
