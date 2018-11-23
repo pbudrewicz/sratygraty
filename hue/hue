@@ -265,50 +265,60 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
         schema=$1 
         case $schema in
             xy|hue)                                
-                if [ "$8" = "" -o "$schema" != "$5" ] ; then
-                    show_help 1 too few parameters or bad schema specified
+                if [ "$4" = "" ] ; then
+                    show_help 1 too few parameters $*
                 fi
                 set_bulb_color $light $schema $2 $3 $4
                 shift 4
                 ;;
             ct)
-                if [ "$6" = "" -o "$schema" != "$4" ] ; then
-                    show_help 1 too few parameters or bad schema specified
+                if [ "$3" = "" ] ; then
+                    show_help 1 too few parameters $*
                 fi
                 set_bulb_color $light $schema $2 $3
                 shift 3
                 ;;
             *)
-                show_help 1 bad schema specified - ;; # TODO: add color name support
+                COLOR=$( describe_color $schema )
+                if [ "$2" = "" ] ; then
+                    show_help 1 too few parameters $*
+                fi
+                set_bulb_color $light xy $COLOR $2
+                shift 2
         esac
     fi
     
     schema=$1
     if [ "$schema" = "" ] ; then
-	show_help 1 no schema
+	show_help 1 no target color description
     fi
     SAVED_COLOR=$( get_color $light )
     SAVED_SCHEMA=$( first $SAVED_COLOR )
-    if [ "$schema" != "$SAVED_SCHEMA" ] ; then
-        echo "Cannot transit from $SAVED_SCHEMA to $schema"
-        exit 1
-    fi
     feedback transit from $SAVED_COLOR to "$@" in $STEPS steps
     for i in $( seq 1 $STEPS ) ; do
-        case $schema in
+        case $1 in # hands off 
             xy|hue)                                
                 if [ "$4" = "" ] ; then
-                    show_help 1 too few parameters specified
+                    show_help 1 too few parameters specified $*
                 fi
                 NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3 $4 $i) ;;            
             ct)
                 if [ "$3" = "" ] ; then
-                    show_help 1 too few parameters specified
+                    show_help 1 too few parameters specified $*
                 fi
                 NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3  $i) ;;
-            *)
-                show_help 1 unknown schema $schema ;; # TODO: add color name support
+            *)      
+                if [ "$2" = "" ] ; then
+                    show_help 1 too few parameters specified $*
+                fi
+                COLOR=$( describe_color $1 )
+                schema=xy
+                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $COLOR $2 $i) ;;
         esac
+        if [ "$schema" != "$SAVED_SCHEMA" ] ; then
+            echo "Cannot transit from $SAVED_SCHEMA to $schema"
+            exit 1
+        fi
         set_bulb_color $light $NEW_COLOR 
         sleep $SLEEP
         maybe_give_up $light
@@ -752,6 +762,36 @@ hue set color
     esac
 }
 
+describe_color () {
+    case $1 in
+        red)
+            COLOR=$RED_COLOR
+            ;;
+        orange)
+            COLOR=$ORANGE_COLOR
+            ;;
+        yellow)
+            COLOR=$YELLOW_COLOR
+            ;;
+        green)
+            COLOR=$GREEN_COLOR
+            ;;
+        blue)
+            COLOR=$BLUE_COLOR
+            ;;
+        violet)
+            COLOR=$VIOLET_COLOR
+            ;;
+        T*)
+            COLOR=$( export $1 ; sh -c "echo \$$1" ) # note: actually we export VALUE of $1!
+            ;;
+        *)
+            show_help 1 Unknown schema/color $* 
+            ;;
+    esac    
+    echo $COLOR
+}
+
 set_bulb_color () { # this is Internal procedure not accessible 
     light=$1
     shift
@@ -771,32 +811,8 @@ set_bulb_color () { # this is Internal procedure not accessible
             FAKE_hue="hue $*"
             ;;
         *)
-            case $schema in
-                red)
-                    COLOR=$RED_COLOR
-                    ;;
-                orange)
-                    COLOR=$ORANGE_COLOR
-                    ;;
-                yellow)
-                    COLOR=$YELLOW_COLOR
-                    ;;
-                green)
-                    COLOR=$GREEN_COLOR
-                    ;;
-                blue)
-                    COLOR=$BLUE_COLOR
-                    ;;
-                violet)
-                    COLOR=$VIOLET_COLOR
-                    ;;
-                T*)
-                    COLOR=$( export $schema ; sh -c "echo \$$schema" ) # note: actually we export VALUE of schema!
-                    ;;
-                *)
-                    show_help 1 Unknown schema/color $* 
-                    ;;
-            esac
+            COLOR=$( describe_color $schema )
+            FAKE_xy="xy $COLOR"
             if [ "$1" = "" ] ; then
                 show_help 1 no brightness 
             fi
