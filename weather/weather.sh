@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-TEMP=$( getopt -o dfghi:L:l:rsvw --long data,forecast,glimpse,help,id,light:,location:,refresh,silent,verebose,weather -n $0 -- "$@" )
+TEMP=$( getopt -o b:dD:fghi:L:l:rsvw --long brightness:,data,date,forecast,glimpse,help,id,light:,location:,refresh,silent,verebose,weather -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -9,19 +9,20 @@ eval set -- "$TEMP"
 show_help () {
     echo "
 Usage:
-   $0  (-f|-w)[-d][-D DATE][-i ID][-L LOCATION][-l #][-r][-s][-h]
+   $0  (-f|-w)[-d][-b BRIGHTNESS][-D DATE][-i ID][-L LOCATION][-l #][-r][-s][-h]
     Options are
-      -d|--data     - grab data only
-      -D|--date     - show data for DATE
-      -f|--forecast - show forecast
-      -g|--glimpse  - glimpse only - leave light as it was
-      -h|--help     - show this help
-      -i|--id       - show data for city with this ID
-      -L|--location - show data for this LOCATION
-      -l|--light    - use light number # (can be used many times)
-      -r|--refresh  - refresh data before show
-      -s|--silent   - run silently (no curl feedback)
-      -w|--weather  - show current weather
+      -b|--brightness - brightness (default $BRIGHTNESS)
+      -d|--data       - grab data only
+      -D|--date       - show data for DATE
+      -f|--forecast   - show forecast
+      -g|--glimpse    - glimpse only - leave light as it was
+      -h|--help       - show this help
+      -i|--id         - show data for city with this ID
+      -L|--location   - show data for this LOCATION
+      -l|--light      - use light number # (can be used many times)
+      -r|--refresh    - refresh data before show
+      -s|--silent     - run silently (no curl feedback)
+      -w|--weather    - show current weather
 "
     exit $1
 }
@@ -31,6 +32,7 @@ DATA_TYPE="weather"
 SHOW_TYPE="weather"
 SILENT=""
 ID=756135
+BRIGHTNESS=150
 LIGHTS="" # funny, isn't it?
 THE_DAY=$( date +%Y-%m-%d )
 GLIMPSE=0
@@ -72,6 +74,8 @@ is_the_day () {
 
 while true ; do
     case "$1" in
+	-b|--brightness)
+	    BRIGHTNESS=$2; shift 2 ;;
         -d|--data)
             SHOW_TYPE=data # #TODO: rethink
             REFRESH=1; shift ;;
@@ -168,7 +172,7 @@ forecast_show () {
         if ! is_the_day $date ; then continue ; fi 
 
         COLOR=$( temp2color.sh $T)
-        hue -l $light set color xy $COLOR 200 $VERBOSITY
+        hue -l $light set color xy $COLOR $BRIGHTNESS $VERBOSITY
         sleep 1
 
         CONDITION_COUNT=$( weather count "{list}[$i]{weather}" )
@@ -185,7 +189,7 @@ forecast_show () {
         fi	
     done
     feedback MAX T = $MAX_TEMP at $MAX_DATE
-    hue -l $light set color xy $( temp2color.sh $MAX_TEMP ) 200 $VERBOSITY
+    hue -l $light set color xy $( temp2color.sh $MAX_TEMP ) $BRIGHTNESS $VERBOSITY
     sleep 3
     if [ "$GLIMPSE" = "1" ] ; then
         restore_state
@@ -200,7 +204,7 @@ weather_show () {
     temperature=$( weather get "{main}{temp}" )
     T=$( C_from_K $temperature )
         COLOR=$( temp2color.sh $T)
-        hue -l $light set color xy $COLOR 200 $VERBOSITY
+        hue -l $light set color xy $COLOR $BRIGHTNESS $VERBOSITY
         sleep 1
     CONDITION_COUNT=$( weather count "{weather}" )
     for c in $(seq 0 $(( $CONDITION_COUNT - 1 )) ) ; do
