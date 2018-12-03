@@ -22,6 +22,7 @@ RED_CORNER="0.6915 0.3083"
 GREEN_CORNER="0.17 0.7"
 BLUE_CORNER="0.1532 0.0475"
 
+FAKE_bri=111
 FAKE_ct="ct 200 111"
 FAKE_xy="xt $RED_CORNER 111"
 FAKE_hue="hue 45000 150 111"
@@ -467,37 +468,64 @@ hue crawl [x [y [b]] ] -- crawl color in CIE space in x and y range
     
 }
 
-fade () { 
+fade () { # TODO 
 
-HELPTEXT="
+    HELPTEXT="
 hue fade 
-     until time
-     for   period
-"
+     until TIME
+     for PERIOD
+"    
+    mandatory_lights
+    #TODO: ideas: do not force whole fade out when off - fade from current - sunset fade? 
+    cmd=$1 ; shift
+    TIME=$1 ; shift    
+    if [ "$TIME" = "" ] ; then
+    	show_help 1
+    fi
+    COLOR=$( get_color $light )
+    SCHEMA=$( first $COLOR )
     
-    time_parameter=$1
-    shift
+    b=$(  get_brightness $light)
 
-    sleep=$time_parameter
+    case $cmd in 
+        [u]ntil) # until is a keyword and breaks emacs's and vim's formatting. LOL
+            if [ "$1" = "" ] ; then
+    	        show_help 1
+            fi
+            feedback "fading until $TIME"
+            END_TIME=$( date --date "$TIME" +%s)
+            ;;
+        [f]or) # for is a keyword and breaks emacs's and vim's formatting. LOL
+            END_TIME=$(( $( date +%s ) + $TIME ))
+            feedback "fading for $TIME seconds"
+            ;;
+        *)
+            show_help 1
+            ;;
+    esac
     
-    for light  in $LIGHTS ; do
-	{
-	    b=$(  get_brightness $light)
-	    sleep=1 # TODO: it will be calculated depending on time_parameter  AND something 
-	    while [ $b -gt 0 ] ; do
-		set_brightness $b $light
-		sleep $SLEEP
-	        b=$(( $(  get_brightness $light) - 1 )) # we accept external changes...
-	    done 
-	    set_light off $light
-	} &
-    done
-    wait
-
+    while [ "$b" -gt "0" ] ; do # we adapt on every loop iteration
+        SECONDS=$(( $END_TIME - $( date +%s ) ))
+        if [ "$b" -gt "$SECONDS" ] ; then
+            ASLEEP=1 
+            newb=$( calc "%d"  "$b / $SECONDS * ($SECONDS - 1)" )
+        else
+            ASLEEP=$( calc %d "$SECONDS / $b" )
+            newb=$(( $b - 1 ))            
+        fi
+        feedback "waiting $ASLEEP seconds ($SECONDS seconds left)"
+	sleep $ASLEEP
+        maybe_give_up
+    	set_brightness $newb 
+        if [ "$PERSIST" = "0" ] ; then
+	    b=$( get_brightness $light) # we accept external changes... 
+        fi
+    done 
+    set_light off $light    
 }
 
 get_color () { # one light only
-
+    
     if [ "$1" = "" ] ; then
         show_help 1
     fi
@@ -514,7 +542,7 @@ get_color () { # one light only
                 ;;
             hue)
                 feedback Faking light $1 is $FAKE_hue.
-                echo $FAKE_hue
+                echo $FAKE_hue 
                 ;;
             *)
                 show_help 1
@@ -551,7 +579,7 @@ get_color () { # one light only
 
 get_brightness () { 
     if [ "$DRY" = "1" ] ; then
-        echo 111
+        echo $FAKE_bri
         return
     fi
     echo $(get_lights_json $1 | unjson '{state}{bri}' )
@@ -644,10 +672,9 @@ hue set brightness {brightness:1-254} - setting brightnes
     fi    
     BRIGHTNESS=$1
     mandatory_lights
-    feedback setting brightness to $BRIGHTNESS    
-    for light in $LIGHTS ; do
-        polite_curl -s -X PUT -d '{"bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state 
-    done
+    feedback setting brightness of light $light to $BRIGHTNESS    
+    FAKE_bri=$BRIGHTNESS
+    polite_curl -s -X PUT -d '{"bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
 
 set_hue () {
