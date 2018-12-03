@@ -1,7 +1,6 @@
 #!/bin/bash
 
 PATH=$PATH:~/sratygraty/scripts
-DATA=/tmp/weather_info.dat
 DIR=$( dirname $0 )
 
 . ../hue/colors.sh
