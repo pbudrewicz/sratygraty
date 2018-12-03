@@ -3,6 +3,8 @@
 ### author: p.budrewicz
 
 . $( dirname $0 )/user.key 
+. $( dirname $0 )/colors.sh
+ 
 VERBOSE=0
 SHOW_RESPONSES=0 # show curl responses
 DRY=0 # do not run curl
@@ -24,7 +26,7 @@ BLUE_CORNER="0.1532 0.0475"
 
 FAKE_bri=111
 FAKE_ct="ct 200 111"
-FAKE_xy="xt $RED_CORNER 111"
+FAKE_xy="xy $RED_CORNER 111"
 FAKE_hue="hue 45000 150 111"
 
 # sunrise color arch and brightnes sequence
@@ -169,7 +171,7 @@ interpolate () {
 }
 
 debug () {
- :  echo "$@" >&2
+  :  echo "$@" >&2
 }
 
 calc () { # use perl for floating point calculations
@@ -216,19 +218,22 @@ for_lights () {
     for word ; do
         #        echo debug $word
         if [ "$word" = "help" ] ; then
-            $*
+            "$@"
             exit 0
         fi
     done
     mandatory_lights
     for light in $LIGHTS ; do
-        $* &
+        "$@" &
     done
     wait
 }
 
-alert () { # TODO: just one light! check with other (e.g. blink)
-    
+alert () { 
+    HELPTEXT="
+$0 alert - blink mode on
+"
+    maybe_help_needed "$@"
     mandatory_lights
     set_light on 
     feedback alert on light $light
@@ -254,58 +259,67 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
 
     for help on describing color run '$(basename $0) color help'
 "
-
-    maybe_help_needed $*
-
+    maybe_help_needed "$@"
+    mandatory_lights
     if [ "$1" = "from" ] ; then 
         shift
         schema=$1 
         case $schema in
             xy|hue)                                
-                if [ "$8" = "" -o "$schema" != "$5" ] ; then
-                    show_help 1
+                if [ "$4" = "" ] ; then
+                    show_help 1 too few parameters $*
                 fi
                 set_bulb_color $light $schema $2 $3 $4
                 shift 4
                 ;;
             ct)
-                if [ "$6" = "" -o "$schema" != "$4" ] ; then
-                    show_help 1
+                if [ "$3" = "" ] ; then
+                    show_help 1 too few parameters $*
                 fi
                 set_bulb_color $light $schema $2 $3
                 shift 3
                 ;;
             *)
-                show_help 1 ;;
+                COLOR=$( describe_color $schema )
+                if [ "$2" = "" ] ; then
+                    show_help 1 too few parameters $*
+                fi
+                set_bulb_color $light xy $COLOR $2
+                shift 2
         esac
     fi
     
     schema=$1
     if [ "$schema" = "" ] ; then
-	show_help 1
+	show_help 1 no target color description
     fi
     SAVED_COLOR=$( get_color $light )
     SAVED_SCHEMA=$( first $SAVED_COLOR )
-    if [ "$schema" != "$SAVED_SCHEMA" ] ; then
-        echo "Cannot transit from $SAVED_SCHEMA to $schema"
-        exit 1
-    fi
-    feedback transit from $SAVED_COLOR to $* in $STEPS steps
+    feedback transit from $SAVED_COLOR to "$@" in $STEPS steps
     for i in $( seq 1 $STEPS ) ; do
-        case $schema in
+        case $1 in # hands off 
             xy|hue)                                
                 if [ "$4" = "" ] ; then
-                    show_help 1
+                    show_help 1 too few parameters specified $*
                 fi
                 NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3 $4 $i) ;;            
             ct)
                 if [ "$3" = "" ] ; then
-                    show_help 1
+                    show_help 1 too few parameters specified $*
                 fi
                 NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3  $i) ;;
-            *)
-                show_help 1 ;;
+            *)      
+                if [ "$2" = "" ] ; then
+                    show_help 1 too few parameters specified $*
+                fi
+                COLOR=$( describe_color $1 )
+                schema=xy
+                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $COLOR $2 $i) ;;
         esac
+        if [ "$schema" != "$SAVED_SCHEMA" ] ; then
+            echo "Cannot transit from $SAVED_SCHEMA to $schema"
+            exit 1
+        fi
         set_bulb_color $light $NEW_COLOR 
         sleep $SLEEP
         maybe_give_up $light
@@ -315,12 +329,13 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
 
 hue_pulse () {
     HELPTEXT="
-pulse help 
-" #TODO
-    maybe_help_needed $*
+$0 pulse COLOR - switch to COLOR for a moment 
+" 
+    maybe_help_needed "$@"
+    mandatory_lights
     SAVED_COLOR=$( get_color $light )
-    set_bulb_color $light $*
-    sleep $SLEEP;
+    set_bulb_color $light "$@"
+    sleep $SLEEP;  
     set_bulb_color $light $SAVED_COLOR
 }
 
@@ -329,35 +344,44 @@ HELPTEXT="
 hue clone LIGHT - set light as current LIGHT
 "
     if [ "$1" = "" ] ; then
-        show_help 1
+        show_help 1 no light number
     fi
+    maybe_help_needed $*
+    mandatory_lights
     set_color $(get_color $1)
 }
 
-blink () { # TODO: every procedure should use one light! 
-    #uses $LIGHTS and $light
+blink () {
+
     HELPTEXT="
 hue blink 
-       until time
-       for period
-       once
-       times number
-    differrent time formats accepted
+       until TIME   - blink until specified time
+       for SECONDS  - for that many SECONDS
+       once         - once
+       times NUMBER - NUMBER times
+    differrent TIME formats accepted:
+      - 17:32
+      - tomorrow 9:00
+      - Tuesday
+      
 "
+    maybe_help_needed "$@"
+    mandatory_lights
     cmd=$1
     shift
     # $light set outside
     case $cmd in
 	[u]ntil) # until is a keyword and breaks emacs's and vim's formatting. LOL
 	    if [ "$1" = "" ] ; then
-		show_help 1
+		show_help 1 no time specified
 	    fi
-	    feedback blinking until $1
+            TIME="$1"
 	    UNTIL=$( date --date "$TIME" +%s)
+	    feedback "Blinking until $TIME ($(( $UNTIL - $( date +%s ) ))s)"
 	    ;;
 	[f]or) # for is a keyword and breaks emacs's and vim's formatting. LOL
 	    if [ "$1" = "" ] ; then
-		show_help 1
+		show_help 1 no period specified
 	    fi
 	    feedback blinking for $1 seconds
 	    UNTIL=$(( $( date +%s ) + $1))
@@ -369,7 +393,7 @@ hue blink
 	    ;;
 	times)
 	    if [ "$1" = "" ] ; then
-		show_help 1
+		show_help 1 number of times not specified
 	    fi
 	    feedback blinking $1 times
 	    for i in $(seq 1 $1) ; do
@@ -379,7 +403,7 @@ hue blink
 	    exit 0
 	    ;;
 	*)
-	    show_help 1
+	    show_help 1 unknown subcommand $cmd
 	    ;;
     esac
 		
@@ -433,15 +457,21 @@ adjust_color () {
 }
 
 chase () {
-
-  light=$1 
-  shift
-  while [ "$1" != "$light" ] ; do 
-    shift
-  done
-  target=$2  
-
-  crawl $light $target  
+#TODO:
+    HELPTEXT=" 
+  make all specified lights exchange their colors in circle
+  (unsupported yet) 
+"
+    maybe_help_needed "$@"
+    mandatory_lights
+  
+    while [ "$1" != "$light" ] ; do 
+        shift
+    done
+    target=$2  
+    
+    feedback "Chasing $light -> $target"
+    crawl $target  
 
 }
 
@@ -452,8 +482,16 @@ crawl () {
 hue crawl [x [y [b]] ] -- crawl color in CIE space in x and y range 
                      default y = x; x = 0.05; b=10
 "
+    maybe_help_needed "$@"
+    mandatory_lights
 
-    BASE_COLOR=$( get_color $2 )
+    if [ "$1" != "" ] ; then
+        target=$1
+    else
+        target=$light
+    fi
+
+    BASE_COLOR=$( get_color $target )
     for i in $(seq 1 10 ) ; do
         R=$( random 6.283 )
 	# DX=$( calc $( random $CRAWL ) - $CRAWL / 2 ) # uniform on |x,y| disc
@@ -461,12 +499,13 @@ hue crawl [x [y [b]] ] -- crawl color in CIE space in x and y range
         DX=$( calc "$CRAWL * sin( $R ) " )           # uniform on a circle 
         DY=$( calc "$CRAWL * cos( $R ) " )           #
 	DB=$( calc $( random $CRAWLB ) - $CRAWLB / 2 )
-	transit_to_color $1 $( adjust_color $BASE_COLOR $DX $DY $DB ) 
+	transit_to_color $( adjust_color $BASE_COLOR $DX $DY $DB ) 
 	sleep $SLEEP
     done
-    transit_to_color $1 $BASE_COLOR
+    transit_to_color $BASE_COLOR
     
 }
+
 
 fade () { # TODO 
 
@@ -475,6 +514,7 @@ hue fade
      until TIME
      for PERIOD
 "    
+    maybe_help_needed "$@"
     mandatory_lights
     #TODO: ideas: do not force whole fade out when off - fade from current - sunset fade? 
     cmd=$1 ; shift
@@ -527,7 +567,7 @@ hue fade
 get_color () { # one light only
     
     if [ "$1" = "" ] ; then
-        show_help 1
+        show_help 1 LIGHT number not provided
     fi
 
     if [ "$DRY" = "1" ] ; then
@@ -545,7 +585,7 @@ get_color () { # one light only
                 echo $FAKE_hue 
                 ;;
             *)
-                show_help 1
+                show_help 1 bad schema for dry run: $DRY_SCHEMA
                 ;;
         esac
         return 
@@ -572,7 +612,7 @@ get_color () { # one light only
 	    echo ct $ct $bri
             ;;
         *)
-            show_help 1
+            show_help 1 bad color schema $color_type
             ;;
     esac
 }
@@ -627,10 +667,11 @@ set_light () {
     HELPTEXT="
 hue light on|off
 "
-
+    maybe_help_needed "$@"
     if [ "$1" = "" ] ; then
-        show_help 1
+        show_help 1 light status not specified
     fi
+    mandatory_lights
 
     ONOFF=$1
     case  $ONOFF in
@@ -645,14 +686,14 @@ hue light on|off
             polite_curl -s -X PUT -d '{"on":false}' http://$bridge_ip/api/$user_key/lights/$light/state 
             ;;
         *)
-            show_help 1
+            show_help 1 bad light status $ONOFF 
     esac
     
 }
 
 my_loop () { 
     hue=0
-
+    #TODO
     while true ; do
         ./set_color.sh $1 hue $hue 254 100
         hue=$(( ( $hue + 10000 ) % 65535 ))
@@ -666,10 +707,11 @@ set_brightness () {
     HELPTEXT="
 hue set brightness {brightness:1-254} - setting brightnes
 "
-    
+    maybe_help_needed "$@"
     if [ "$1" = "" ] ; then
-        show_help 1
+        show_help 1 no brightness value specified
     fi    
+    mandatory_lights
     BRIGHTNESS=$1
     mandatory_lights
     feedback setting brightness of light $light to $BRIGHTNESS    
@@ -679,14 +721,15 @@ hue set brightness {brightness:1-254} - setting brightnes
 
 set_hue () {
     HELPTEXT="
-hue set color hue {hue:0-65535} {saturation:1-254} {brightness:1-254}
+hue [set] color hue {hue:0-65535} {saturation:1-254} {brightness:1-254}
    
 "
-    if [ "$3" = "" ] ; then
-        show_help 1
-    fi    
+    maybe_help_needed "$@"
     mandatory_lights
-    feedback setting hue to $*
+    if [ "$3" = "" ] ; then
+        show_help 1 $*
+    fi    
+    feedback setting hue to "$@"
     polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$2',"bri":'$3'}' http://$bridge_ip/api/$user_key/lights/$light/state     
 }
 
@@ -695,11 +738,14 @@ set_xy () {
 CIE set color xy {x} {y} {brightness:1-254}
 
 "
+
+    maybe_help_needed "$@"
     if [ "$3" = "" ] ; then
-        show_help 1
+        show_help 1 too few parameters specified
     fi    
     mandatory_lights
-    feedback setting CIE color of light $light to $*
+    
+    feedback setting CIE color of light $light to "$@"
     polite_curl -s -X PUT -d '{"on":true, "xy":['$1', '$2'], "bri":'$3'}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
 
@@ -708,11 +754,12 @@ set_ct () {
 hue set color ct  {mirek:153-500} {brightness:1-254}
             153 - cold -- 500 - warm
 "
+    maybe_help_needed "$@"    
     if [ "$2" = "" ] ; then
-        show_help 1
+        show_help 1 too few parameters specified
     fi    
     mandatory_lights
-    feedback setting light $light to  mirek $*
+    feedback setting light $light to  mirek "$@"
     polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
     
@@ -722,44 +769,80 @@ hue set color
           hue {hue:0-65000} {saturation:1-254} {brightness:1-254}
           xy  {x} {y} {brightness:1-254}
           ct  {mirek:153-500} {brightness:1-254}
+            or named color:       
+          red|orange|yellow|green|blue|violet
+            or temperature 
+          T1500 - T7000 -- color temperature in multiples of 500
 "
+    maybe_help_needed "$@"
+    mandatory_lights
     case $1 in 
-        xy|ct|hue)            
-            mandatory_lights
-            for light in $LIGHTS ; do 
-                set_bulb_color $light $*
-            done
-            ;;
         help)
             show_help 0
             ;;
         *)
-            show_help 1
-            ;;
+            mandatory_lights
+            set_bulb_color $light "$@"
+            ;;        
     esac
 }
 
-set_bulb_color () {
+describe_color () {
+    case $1 in
+        red)
+            COLOR=$RED_COLOR
+            ;;
+        orange)
+            COLOR=$ORANGE_COLOR
+            ;;
+        yellow)
+            COLOR=$YELLOW_COLOR
+            ;;
+        green)
+            COLOR=$GREEN_COLOR
+            ;;
+        blue)
+            COLOR=$BLUE_COLOR
+            ;;
+        violet)
+            COLOR=$VIOLET_COLOR
+            ;;
+        T*)
+            COLOR=$( export $1 ; sh -c "echo \$$1" ) # note: actually we export VALUE of $1!
+            ;;
+        *)
+            show_help 1 Unknown schema/color $* 
+            ;;
+    esac    
+    echo $COLOR
+}
+
+set_bulb_color () { # this is Internal procedure not accessible 
     light=$1
     shift
     schema=$1
     shift
     case $schema in
 	xy)	
-            set_xy $*
+            set_xy "$@"
             FAKE_xy="xy $*"
             ;;
         ct)
-            set_ct $*
+            set_ct "$@"
             FAKE_ct="ct $*"
             ;;
         hue)
-            set_hue $*
+            set_hue "$@"
             FAKE_hue="hue $*"
             ;;
         *)
-            show_help 1 
-            ;;            
+            COLOR=$( describe_color $schema )
+            FAKE_xy="xy $COLOR $1"
+            if [ "$1" = "" ] ; then
+                show_help 1 no brightness 
+            fi
+            set_xy $COLOR $*
+            ;;
     esac
     
 }
@@ -769,12 +852,12 @@ set_saturation () {
     HELPTEXT="
 hue set saturation {saturation:1-254} - setting saturation
 "
-    
+    maybe_help_needed "$@"    
     if [ "$1" = "" ] ; then
-        show_help 1
+        show_help 1 no saturation value
     fi    
     mandatory_lights
-    feedback setting saturation to $* 
+    feedback setting saturation to "$@" 
     for light ; do
         polite_curl -s -X PUT -d '{"sat":'$v'}' http://$bridge_ip/api/$user_key/lights/$light/state 
     done
@@ -786,19 +869,16 @@ show_sequence () {
     HELPTEXT="
 feed STDIN with color data
 "
+    maybe_help_needed "$@"
     if [ "$1" = "help" ] ; then
         show_help 0
     fi
-
+    mandatory_lights
     while read one two three four ; do 
         case one in
-            xy) 
-                feedback setting xy $two $three $four
-                set_color xy $two $three $four
-                ;;
-            hue)
-                feedback setting hue $two $three $four
-                set_color hue $two $three $four
+            xy|hue) 
+                feedback setting $one $two $three $four
+                set_color $one $two $three $four
                 ;;
             ct) 
                 feedback setting ct $two $three
@@ -817,6 +897,8 @@ feed STDIN with color data
 
 sunrise () { 
     #TODO: help, internal interpolation
+    maybe_help_needed "$@"
+    mandatory_lights
     if [ "$EXP" = "1" ] ; then
 	echo -e "$SUNRISE" |$(dirname $0)/../scripts/interpolate.pl $STEPS %f %f *%d  | show_sequence
     else
@@ -827,6 +909,8 @@ sunrise () {
 
 sunset () { 
     #TODO: help, internal interpolation
+    maybe_help_needed "$@"
+    mandatory_lights
     if [ "$EXP" = "1" ] ; then
 	echo -e "$SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl $STEPS %f %f *%d  | show_sequence
     else
@@ -848,23 +932,24 @@ hue set
          on
          off
 "
+    mandatory_lights
     cmd=$1
     shift
     case $cmd in
         brightness)
-            set_brightness $*
+            set_brightness "$@"
             ;;
         saturation)
-            set_saturation $*
+            set_saturation "$@"
             ;;
         color)            
-            set_color $*
+            set_color "$@"
             ;;
         light)
-            set_light $*
+            set_light "$@"
             ;;
         *)
-            show_help 1
+            show_help 1 unknown parameter
             ;;
     esac
 }
@@ -879,21 +964,22 @@ hue get
         lights - lights data in JSON format
         mode   - current color mode (hue/xy/ct)
 "
+    maybe_help_needed "$@"
     cmd=$1
     shift
     case $cmd in
         brightness)
-	    get_brightness $*
+	    get_brightness "$@"
             ;;
         onoff)
-            get_on_off $*
+            get_on_off "$@"
 	    ;;
         config)
             feedback getting config
-	    get_config_json $*
+	    get_config_json "$@"
             ;;
         lights)
-	    get_lights_json $*
+	    get_lights_json "$@"
 	    ;;
         color)
 	    get_color $1
@@ -901,7 +987,7 @@ hue get
         mode)
             ;;
         *)
-            show_help 1
+            show_help 1 unknown query: $*
             ;;
     esac
 }
@@ -981,11 +1067,17 @@ mandatory_lights () {
 show_help () {
     if [ "$1" = "0" ] ; then
         echo "$HELPTEXT" 
+        exit 0
     else
-        echo "$HELPTEXT" >&2
-	echo bad command: "$0 $*" #TODO: if debug
+        if [ "$2" != "" ] ; then
+            shift
+	    echo error: $* >&2  #TODO: if debug            
+        fi
+        if [ "$VERBOSE" = "1" ] ; then
+            echo "$HELPTEXT" >&2
+        fi
+        exit 1
     fi
-    exit $1
 }
 
 while true ; do
@@ -1037,83 +1129,81 @@ if [ "$cmd" = "" ] ; then
     echo "No command specified. Try $0 -h "
     exit 1
 fi
+
+debug param: "$@" # DEBUG
+
 case $cmd in
     alert)
-        for_lights alert 
+        for_lights alert "$@"
 	;;
     blink)
-        for_lights blink $* 
+        for_lights blink "$@" 
 	;;
     color)
-        for_lights set_color $* 
+        for_lights set_color "$@" 
 	;;
-    chase)
-	mandatory_lights
-        for light in $LIGHTS ; do
-          chase $light $LIGHTS $LIGHTS &
-        done
-        wait
+    chase)  ## TODO: help support needed!
+        for_lights chase $LIGHTS $LIGHTS "$@"
         ;;
-    crawl)
-	mandatory_lights
-	for light in $LIGHTS ; do
-	    crawl $light $light &
-	done
-	wait
+    crawl) ## TODO: help support needed!
+	for_lights crawl "$@"
 	;;
+    help)
+        show_help 0
+        ;;
     scan)
 	discover_bridge
 	exit 0
 	;;
     get)
-	get_value $*
+	get_value "$@"
 	;;
     is)
-	is_light_on $*
+	is_light_on "$@"
 	;;
     dump)
 	dump_data
 	exit 0
 	;;
     pulse)
-        for_lights hue_pulse $* 
+        for_lights hue_pulse "$@" 
 	;;
     set)	
-	set_value $*
+	for_lights set_value "$@"
 	;;
     show)
-        for_lights show_sequence $* 
+        for_lights show_sequence "$@" 
 	;;
     transit)
-        for_lights transit_to_color $* 
+        for_lights transit_to_color "$@" 
         ;;            
     *)
 	mandatory_lights
 	case $cmd in
 	    clone)                
-                clone_light $1
+                for_lights clone_light "$@"
 		;;
 	    fade)
-                for_lights fade $* 
+                for_lights fade "$@" 
 		;;
 	    loop)
 		;;
 	    my_loop)
 		;;
 	    off)
-                for_lights set_light off $* 
+                for_lights set_light off "$@" 
 		;;
 	    on)
-		for_lights set_light on $* 
+		for_lights set_light on "$@" 
 		;;
 	    sunrise)
-                for_lights $cmd $*
+                for_lights $cmd "$@"
 		;;
 	    sunset)
-                for_lights $cmd $*
+                for_lights $cmd "$@"
 		;;
 	    *)
-		show_help 1
+		show_help 1 Unknown command $*
 		;;
 	esac
 	
