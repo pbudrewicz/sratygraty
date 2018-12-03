@@ -190,7 +190,7 @@ calc () { # use perl for floating point calculations
 ### end math
 maybe_give_up () {
     if [ "$PERSIST" = "1" ] ; then return 0 ; fi
-    light=$1
+#    light=$1
     if ! is_light_on $light ; then
         feedback User turned the light $light off - giving up
         set_color hue 45000 200 254
@@ -711,7 +711,6 @@ hue set brightness {brightness:1-254} - setting brightnes
     if [ "$1" = "" ] ; then
         show_help 1 no brightness value specified
     fi    
-    mandatory_lights
     BRIGHTNESS=$1
     mandatory_lights
     feedback setting brightness of light $light to $BRIGHTNESS    
