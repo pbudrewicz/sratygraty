@@ -240,7 +240,7 @@ K_2_xy () {
         HIGH=$( calc %d "(1 + int($T / 500)) * 500" )
     fi
     
-    HIGH_COLOR=$( export T$HIGH ; sh -c "echo \$T$HIGH" )
+    HIGH_COLOR=$( export T$HIGH ; sh -c "echo \$T$HIGH" ) # the trick is to show value of variable with calculated name, as  ${T$T} does not work
     LOW_COLOR=$( export T$LOW ; sh -c "echo \$T$LOW" )
 
     echo $( interpolate $(( $HIGH - $LOW )) pair $LOW_COLOR $HIGH_COLOR $(( $T - $LOW )) )
@@ -345,13 +345,24 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
                 set_bulb_color $light $schema $2 $3
                 shift 3
                 ;;
+            T*)
+                COLOR=$( describe_color $schema )
+                if [ "$2" = "" ] ; then
+                    show_help 1 too few parameters $*
+                fi
+                schema=xy
+                set_bulb_color $light xy $COLOR $2
+                shift 2
+                ;;
             *)
                 COLOR=$( describe_color $schema )
                 if [ "$2" = "" ] ; then
                     show_help 1 too few parameters $*
                 fi
+                schema=xy
                 set_bulb_color $light xy $COLOR $2
                 shift 2
+                ;;
         esac
     fi
     
@@ -361,11 +372,6 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
     fi
     SAVED_COLOR=$( get_color $light )
     SAVED_SCHEMA=$( first $SAVED_COLOR )
-    if [ "$schema" != "$SAVED_SCHEMA" ] ; then
-        # TODO: transfer  ct -> xy
-        echo "Cannot transit from $SAVED_SCHEMA to $schema"
-        exit 1
-    fi
     feedback transit from $SAVED_COLOR to "$@" in $STEPS steps
     for i in $( seq 1 $STEPS ) ; do
         case $1 in # hands off 
@@ -379,14 +385,26 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
                     show_help 1 too few parameters specified $*
                 fi
                 NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3  $i) ;;
-            *)      
+            T*)      
                 if [ "$2" = "" ] ; then
                     show_help 1 too few parameters specified $*
                 fi
                 COLOR=$( describe_color $1 )
                 schema=xy
                 NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $COLOR $2 $i) ;;
+            *)      
+                if [ "$2" = "" ] ; then
+                    show_help 1 too few parameters specified $*
+                fi
+                COLOR=$( describe_color $1 )
+                schema=xy
+                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $COLOR $2 $i) ;;           
         esac
+        if [ "$schema" != "$SAVED_SCHEMA" ] ; then
+            # TODO: transfer  ct -> xy
+            echo "Cannot transit from $SAVED_SCHEMA to $schema"
+            exit 1
+        fi
         set_bulb_color $light $NEW_COLOR 
         sleep $SLEEP
         maybe_give_up $light
@@ -524,7 +542,7 @@ adjust_color () {
 }
 
 chase () {
-#TODO:
+#TODO: make it working and actually chasing each other more than once
     HELPTEXT=" 
   make all specified lights exchange their colors in circle
   (unsupported yet) 
@@ -574,7 +592,7 @@ hue crawl [x [y [b]] ] -- crawl color in CIE space in x and y range
 }
 
 
-fade () { # TODO 
+fade () { 
 
     HELPTEXT="
 hue fade 
@@ -628,7 +646,7 @@ hue fade
     set_light off $light    
 }
 
-get_color () { # one light only
+get_color () { # one light only - passed as parameter
     
     if [ "$1" = "" ] ; then
         show_help 1 LIGHT number not provided
@@ -686,7 +704,7 @@ get_brightness () {
         echo $FAKE_bri
         return
     fi
-    echo $(get_lights_json $1 | unjson '{state}{bri}' )
+    echo $( get_lights_json $1 | unjson '{state}{bri}' )
 }
 
 
@@ -757,7 +775,7 @@ hue light on|off
 
 my_loop () { 
     hue=0
-    #TODO
+    #TODO 
     while true ; do
         ./set_color.sh $1 hue $hue 254 100
         hue=$(( ( $hue + 10000 ) % 65535 ))
@@ -870,8 +888,7 @@ describe_color () { # returns xy values for named color
         violet)
             COLOR=$VIOLET_COLOR
             ;;
-        T*)
-            COLOR=$( export $1 ; sh -c "echo \$$1" ) # note: actually we export VALUE of $1!
+        T*)            
             COLOR=$( K_2_xy $1 )
             ;;
         *)
