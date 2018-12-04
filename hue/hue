@@ -247,6 +247,10 @@ K_2_xy () {
     
 }
 
+ct_2_xy () {
+    echo $( K_2_xy T$( calc "1000000 / $1" ) )
+}
+
 ### end math
 maybe_give_up () {
     if [ "$PERSIST" = "1" ] ; then return 0 ; fi
