@@ -220,10 +220,10 @@ K_2_xy () {
         T=4500
     fi
 
-    if [[ $T -lt 1500 ]] ; then
-        T=1500
-        LOW=1500
-        HIGH=2000
+    if [[ $T -lt 1000 ]] ; then
+        T=1000
+        LOW=1000
+        HIGH=1500
     fi
     if [[ $T -gt 20000 ]] ; then
         T=20000
