@@ -54,6 +54,8 @@ LINEAR_SUNRISE="0.68 0.3 1
 0.32 0.33 228
 0.31 0.32 254"
 
+# TODO: add support to setting color of celsius temperature and remove it from weather.sh
+# TODO: conversion ct -> xy and maybe xy -> ct.
 
 TEMP=$( getopt -o b:d::ehk:l:op:Prs:v:: --long bridge:,dry::,exp,help,key:,light:,off,period:,persist,responses,steps:,verbose:: -n $0 -- "$@" )
 
@@ -116,7 +118,8 @@ polite_curl () {
 
 ### some fun math...
 
-interpolate () {
+interpolate () { # this function takes 
+    # step_count (xy|hue|ct|bri) L1 L2 [L3] R1 R2 [R3] current_step ->  I1 I2 [I3] # interpolated values    
 
     #  feedback interpolating $@
 
@@ -141,14 +144,28 @@ interpolate () {
           TOB=$6
 	  STEP=$7
           ;;
+      pair)
+          FROM1=$3
+          FROM2=$4
+          TO1=$5
+          TO2=$6
+          STEP=$7
+          ;;
+      bri)
+          FROMB=$3
+          TOB=$4
+          STEP=$5
+          ;;
   esac
   debug F1:$FROM1 T1:$TO1 STEPS:$STEPS STEP:$STEP
-  if [ "$EXP" = "1" ] ; then
-      BRI=$( calc %d "((($TOB / $FROMB) ** (1.0/$STEPS)) ** $STEP ) * $FROMB" )
-  else
-      BRI=$( calc %d "($TOB - $FROMB)/$STEPS * $STEP + $FROMB" ) 
+  if [ "$SCHEMA" != "pair" ] ; then
+      if [ "$EXP" = "1" ] ; then
+          BRI=$( calc %d "((($TOB / $FROMB) ** (1.0/$STEPS)) ** $STEP ) * $FROMB" )
+      else
+          BRI=$( calc %d "($TOB - $FROMB)/$STEPS * $STEP + $FROMB" ) 
+      fi
+      debug b:$BRI
   fi
-  debug b:$BRI
   case $SCHEMA in 
       xy)
 	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
@@ -166,6 +183,14 @@ interpolate () {
 	  VAL1=$( calc %d "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
 	  debug mirek:$VAL1
           echo $SCHEMA $VAL1 $BRI
+          ;;
+      pair)
+	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
+	  VAL2=$( calc "($TO2 - $FROM2)/$STEPS * $STEP + $FROM2" )          
+          echo $VAL1  $VAL2
+          ;;
+      bri)
+          echo $BRI
           ;;
   esac
 }
@@ -187,10 +212,45 @@ calc () { # use perl for floating point calculations
     echo -n $( echo "printf (\"$fmt\", $@)" | perl )
 }
 
+K_2_xy () {
+    
+    if [[ "$1" =~ T([0-9]+) ]] ; then
+        T="${BASH_REMATCH[1]}"
+    else
+        T=4500
+    fi
+
+    if [[ $T -lt 1500 ]] ; then
+        T=1500
+        LOW=1500
+        HIGH=2000
+    fi
+    if [[ $T -gt 20000 ]] ; then
+        T=20000
+        LOW=10000
+        HIGH=20000
+    elif [[ $T -gt 10000 ]] ; then
+        LOW=10000
+        HIGH=20000
+    elif [[ $T -gt 7000 ]] ; then
+        LOW=7000
+        HIGH=10000
+    else
+        LOW=$( calc %d "int($T / 500) * 500" )
+        HIGH=$( calc %d "(1 + int($T / 500)) * 500" )
+    fi
+    
+    HIGH_COLOR=$( export T$HIGH ; sh -c "echo \$T$HIGH" )
+    LOW_COLOR=$( export T$LOW ; sh -c "echo \$T$LOW" )
+
+    echo $( interpolate $(( $HIGH - $LOW )) pair $LOW_COLOR $HIGH_COLOR $(( $T - $LOW )) )
+    
+}
+
 ### end math
 maybe_give_up () {
     if [ "$PERSIST" = "1" ] ; then return 0 ; fi
-#    light=$1
+
     if ! is_light_on $light ; then
         feedback User turned the light $light off - giving up
         set_color hue 45000 200 254
@@ -784,7 +844,7 @@ hue set color
     esac
 }
 
-describe_color () {
+describe_color () { # returns xy values for named color
     case $1 in
         red)
             COLOR=$RED_COLOR
@@ -806,6 +866,7 @@ describe_color () {
             ;;
         T*)
             COLOR=$( export $1 ; sh -c "echo \$$1" ) # note: actually we export VALUE of $1!
+            COLOR=$( K_2_xy $1 )
             ;;
         *)
             show_help 1 Unknown schema/color $* 
