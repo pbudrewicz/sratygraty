@@ -3,7 +3,7 @@
 PATH=$PATH:~/sratygraty/scripts
 DIR=$( dirname $0 )
 
-. ../hue/colors.sh
+. ../hue/colors.env
 
 # echo $RED_COLOR
 # echo $ORANGE_COLOR

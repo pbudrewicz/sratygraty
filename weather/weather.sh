@@ -42,7 +42,7 @@ PATH=$PATH:~/sratygraty/scripts:~/sratygraty/hue:~/sratygraty/weather
 DATA_CACHE=/tmp/weather_fun_info.dat
 DIR=$( dirname $0 )
 
-. $DIR/../hue/colors.sh
+. $DIR/../hue/colors.env
 . $DIR/weather.key
 
 feedback () {

@@ -4,7 +4,7 @@ PATH=$PATH:~/sratygraty/scripts:~/sratygraty/hue:~/sratygraty/weather
 DATA_CACHE=/tmp/weather_fun_info.dat
 DIR=$( dirname $0 )
 
-. $DIR/../hue/colors.sh
+. $DIR/../hue/colors.env
 
 if [ "$1" = "-f" ] ; then
     $DIR/get_weather.sh -f > $DATA_CACHE

@@ -3,7 +3,7 @@
 ### author: p.budrewicz
 
 . $( dirname $0 )/user.key 
-. $( dirname $0 )/colors.sh
+. $( dirname $0 )/colors.env
  
 VERBOSE=0
 SHOW_RESPONSES=0 # show curl responses
@@ -252,6 +252,7 @@ first ()
 
 transit_to_color () {
     # gently change current color into new one
+    # TODO: move to "until/for" time schema like in fade
 
     HELPTEXT="
 hue transit {to_color} {to_brightness} - must be in currently used schema
