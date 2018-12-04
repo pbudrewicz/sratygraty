@@ -320,7 +320,8 @@ transit_to_color () {
 
     HELPTEXT="
 hue transit {to_color} {to_brightness} - must be in currently used schema
-    transit from {from_color} {from_brightness} {to_color} {to_brightness} - color schema must be the same
+    transit from {from_color} {from_brightness} {to_color} {to_brightness} 
+             - color schema should be the same or you can transit from ct to xy.
 
     for help on describing color run '$(basename $0) color help'
 "
@@ -360,6 +361,11 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
     fi
     SAVED_COLOR=$( get_color $light )
     SAVED_SCHEMA=$( first $SAVED_COLOR )
+    if [ "$schema" != "$SAVED_SCHEMA" ] ; then
+        # TODO: transfer  ct -> xy
+        echo "Cannot transit from $SAVED_SCHEMA to $schema"
+        exit 1
+    fi
     feedback transit from $SAVED_COLOR to "$@" in $STEPS steps
     for i in $( seq 1 $STEPS ) ; do
         case $1 in # hands off 
@@ -381,10 +387,6 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
                 schema=xy
                 NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $COLOR $2 $i) ;;
         esac
-        if [ "$schema" != "$SAVED_SCHEMA" ] ; then
-            echo "Cannot transit from $SAVED_SCHEMA to $schema"
-            exit 1
-        fi
         set_bulb_color $light $NEW_COLOR 
         sleep $SLEEP
         maybe_give_up $light
