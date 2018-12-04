@@ -518,7 +518,7 @@ hue fade
     mandatory_lights
     #TODO: ideas: do not force whole fade out when off - fade from current - sunset fade? 
     cmd=$1 ; shift
-    TIME=$1 ; shift    
+    TIME="$*" 
     if [ "$TIME" = "" ] ; then
     	show_help 1
     fi
@@ -529,9 +529,6 @@ hue fade
 
     case $cmd in 
         [u]ntil) # until is a keyword and breaks emacs's and vim's formatting. LOL
-            if [ "$1" = "" ] ; then
-    	        show_help 1
-            fi
             feedback "fading until $TIME"
             END_TIME=$( date --date "$TIME" +%s)
             ;;
