@@ -213,6 +213,11 @@ calc () { # use perl for floating point calculations
 }
 
 K_2_xy () {
+
+# how about this?
+# n = (x-0.3320)/(0.1858-y);
+# CCT = 437*n^3 + 3601*n^2 + 6861*n + 5517
+
     
     if [[ "$1" =~ T([0-9]+) ]] ; then
         T="${BASH_REMATCH[1]}"
