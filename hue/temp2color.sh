@@ -3,14 +3,18 @@
 PATH=$PATH:~/sratygraty/scripts
 DIR=$( dirname $0 )
 
-. $DIR/../hue/colors.env
+. $DIR/colors.env
 
-# echo $RED_COLOR
-# echo $ORANGE_COLOR
-# echo $YELLOW_COLOR
-# echo $GREEN_COLOR
-# echo $CYAN_COLOR
-# echo $BLUE_COLOR
+deb () {
+   : echo "$@" >&2
+}
+
+deb $RED_COLOR
+deb $ORANGE_COLOR
+deb $YELLOW_COLOR
+deb $GREEN_COLOR
+deb $CYAN_COLOR
+deb $BLUE_COLOR
 
 RED_POINT=35
 ORANGE_POINT=25
@@ -30,22 +34,22 @@ interpolate () {
   RCOLORX=$5
   RCOLORY=$6
   VALUE=$7
-  FRAC=$( printf "%f" $( echo "( $VALUE  - $LEFT ) / ( $RIGHT - $LEFT )" | bc -l))
+  FRAC=$( calc "( $VALUE  - $LEFT ) / ( $RIGHT - $LEFT )" )
   deb frac:$FRAC
-  COLX=$(printf "%f" $( echo "$LCOLORX + $FRAC * ($RCOLORX - $LCOLORX)" | bc -l))
+  COLX=$( calc "$LCOLORX + $FRAC * ($RCOLORX - $LCOLORX)")
   deb x:$COLX
-  COLY=$(printf "%f" $( echo "$LCOLORY + $FRAC * ($RCOLORY - $LCOLORY)" | bc -l))
+  COLY=$( calc "$LCOLORY + $FRAC * ($RCOLORY - $LCOLORY)" )
   deb x:$COLY
   echo $COLX $COLY
 }
 
-deb () {
-  : echo "$@" >&2
+calc () {
+    RES="$( echo "$@" | bc -l )"
+    printf "%f" $RES
 }
 
 color_from_C () {
   T=$1
-  deb T=$T
   if [ "$( echo "$T > $RED_POINT"|bc)" = "1" ] ; then
     deb red
     echo $RED_COLOR
