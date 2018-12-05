@@ -386,7 +386,6 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
 	    :
 	    ;;
 	[tT]-xy|xy-[tT])
-		feedback $TRANSIT unsupported yet
 	    :
 	    ;;
 	ct-xy)
