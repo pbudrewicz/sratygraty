@@ -380,13 +380,13 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
     SAVED_COLOR=$( get_color $light )
     SAVED_SCHEMA=$( first $SAVED_COLOR )
     SAVED_BRIGHTNESS=$( get_brightness $light )
-    case "$SAVED_SCHEMA-$schema" in
+    TRANSIT="$SAVED_SCHEMA-$schema"
+    case "$TRANSIT" in
 	xy-xy|ct-ct|hue-hue|[tT]-[tT])
-	    feedback transit 
 	    :
 	    ;;
 	[tT]-xy|xy-[tT])
-	    feedback it is ok
+		feedback $TRANSIT unsupported yet
 	    :
 	    ;;
 	ct-xy)
