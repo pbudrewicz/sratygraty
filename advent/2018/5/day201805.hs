@@ -16,7 +16,7 @@ reduct x | x == reduce x                = x
 testunit :: Char -> String -> String
 testunit x poly = reduct [ y | y <- poly, toUpper(y) /= toUpper(x) ]
 
-findbest :: String -> [Int]
+findbest :: String -> Int
 findbest poly = minimum [ length ( testunit u poly ) | u <- ['a'..'z'] ]
 
 
