@@ -2,14 +2,20 @@
 #include <stdlib.h>
 
 typedef struct marble {
-  int  number;
-  int clockwise, anticlockwise;
+  long  number;
+  long clockwise, anticlockwise;
 } marble;
 
-int /* returns nuber of points */
-add_marble( int *current, int number, struct marble *ring ) {
-  int left, right, i;
-  int points;
+long
+take () {
+  static long free;
+  return free++;
+}
+
+long /* returns nuber of polongs */
+add_marble( long *current, long number, struct marble *ring ) {
+  long left, right, i;
+  long points;
 
   points = 0;
   if (number % 23 != 0) {
@@ -22,7 +28,7 @@ add_marble( int *current, int number, struct marble *ring ) {
     ring[*current].anticlockwise = left;
     ring[left].clockwise = *current;
   } else {
-    points += 23;
+    points += number;
     for (i=0; i<7; i++) 
       *current=ring[*current].anticlockwise; 
     points += ring[*current].number;
@@ -33,18 +39,12 @@ add_marble( int *current, int number, struct marble *ring ) {
   return points;   
 }
 
-int
-take () {
-  static int free;
-  return free++;
-}
-
 void
-show_ring(struct marble *ring, int count) {
-  int i,c;
+show_ring(struct marble *ring, long count) {
+  long i,c;
   c=0;
   for (i=0,c=0; i<=count; i++, c=ring[c].clockwise )
-    printf ("%3d", ring[c].number );
+    printf ("%3ld", ring[c].number );
   printf( "\n" );
   
 }
@@ -53,19 +53,19 @@ int
 main( int count, char** argv) {
 
   struct marble *ring;
-  int            current_marble;
-  int            player;
-  int           *points;     
-  int            player_count;
-  int            marble_count;
-  int            m_no;
-  int            pts;
+  long            current_marble;
+  long            player;
+  long           *points;     
+  long            player_count;
+  long            marble_count;
+  long            m_no;
+  long            max;
 
-  scanf( "%d", &player_count );
-  scanf( "%d", &marble_count );
+  scanf( "%ld", &player_count );
+  scanf( "%ld", &marble_count );
 
   ring = calloc( marble_count+1, sizeof( struct marble ) );    
-  points = calloc( player_count+1, sizeof( int ) );
+  points = calloc( player_count+1, sizeof( long ) );
   
   current_marble = take();
   ring[current_marble].number = 0; 
@@ -73,17 +73,16 @@ main( int count, char** argv) {
   ring[current_marble].anticlockwise = current_marble;
 
   player=1;
-  pts=0;
 
   for (m_no=1; m_no <= marble_count; m_no++ ) {
-    printf ("marble: %d, player: %d (current: %d)\n", m_no, player % player_count, current_marble);
-    pts = add_marble( &current_marble, m_no, ring );
-    points[player] += pts;
+    /* printf ("marble: %ld, player: %ld (current: %ld)\n", m_no, player % player_count, current_marble); */
+    points[player] += add_marble( &current_marble, m_no, ring );
     player=(player + 1) % player_count;
-#    show_ring(ring, m_no );
+    /* show_ring(ring, m_no ); */
   }
-
+  max = 0;
   for (player=0; player<player_count; player++)
-    printf ( "%d\t%d\n", player, points[player] );
+    if (points[player] > max) max = points[player];
+  printf ( "%ld\n", max );
 
 }
