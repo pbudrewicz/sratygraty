@@ -8,7 +8,7 @@ typedef struct marble {
 
 long /* returns number of points */
 add_marble( struct marble **current, long number ) {
-  struct marble *left, *right;
+  struct marble *left, *right, *tmp;
   long points, i;
 
   points = 0;
@@ -32,7 +32,9 @@ add_marble( struct marble **current, long number ) {
     points += (*current)->number;
     (*current)->anticlockwise->clockwise = (*current)->clockwise;
     (*current)->clockwise->anticlockwise = (*current)->anticlockwise;
+    tmp=*current;
     *current=(*current)->clockwise;
+    free(tmp);
   }
   return points;   
 }
