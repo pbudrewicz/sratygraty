@@ -9,8 +9,7 @@ check_rules :: Int -> Set.Set Int -> [[Int]] -> Bool
 check_rules n state rules =  any (\r -> check_rule n state r) rules 
 
 check_rule :: Int -> Set.Set Int -> [Int] -> Bool
-check_rule n state rule = all (\v ->   ((elem (v) rule) && (Set.member (n+v) state)) || (not (elem (v) rule) && not (Set.member (n+v) state))) [-2, -1, 0, 1, 2] 
-
+check_rule n state rule = all (\v ->   (elem (v) rule) == (Set.member (n+v) state) ) [-2, -1, 0, 1, 2] 
 
 -- preparation of input
 
@@ -34,7 +33,7 @@ decode_rule rule = map  (\(c,v) -> v) (filter (\(c, v) -> (c == '#')) (zip rule 
 main = do
   input <- getContents
   let rules = get_rules input in
-    putStrLn ( show ( sum (Set.elems (foldl' (\s i -> next_generation rules s) (Set.fromList (get_initial_state input)) [1..100000]))))
+    putStrLn ( show ( sum (Set.elems (foldl' (\s i -> next_generation rules s) (Set.fromList (get_initial_state input)) [1..1000000]))))
 --    putStrLn ( show ( sum (foldr (\i s -> next_generation rules s) (get_initial_state input) [1..20] )))
 --  putStrLn (show (get_initial_state input))
 --  putStrLn (show (get_rules input))
