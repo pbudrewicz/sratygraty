@@ -1,5 +1,6 @@
 import Data.Char
 import Data.List
+import System.Environment
 
 next_generation :: [[Int]] -> [Int]  -> [Int] 
 next_generation rules px = [ p | p <- [(minimum px - 2)..(maximum px + 2)], check_rules p px rules ] 
@@ -8,7 +9,7 @@ check_rules :: Int -> [Int] -> [[Int]] -> Bool
 check_rules n state rules =  or [  check_rule n state r | r <- rules ]
 
 check_rule :: Int -> [Int] -> [Int] -> Bool
-check_rule n state rule = and [    ((elem (v) rule) && (elem (n+v) state)) || (not (elem (v) rule) && not (elem (n+v) state)) | v <- [-2, -1, 0, 1, 2] ]
+check_rule n state rule = and [ (elem (v) rule) == (elem (n+v) state) | v <- [-2, -1, 0, 1, 2] ]
 
 
 -- preparation of input
@@ -31,9 +32,10 @@ decode_rule :: String -> [Int]
 decode_rule rule = map  (\(c,v) -> v) (filter (\(c, v) -> (c == '#')) (zip rule [-2, -1, 0, 1, 2] ))
 
 main = do
+  count <- getArgs
   input <- getContents
   let rules = get_rules input in
-    putStrLn ( show ( sum (foldl' (\s i -> next_generation rules s) (get_initial_state input) [1..1000])))
+    putStrLn ( show ( sum (foldl' (\s i -> next_generation rules s) (get_initial_state input) [1..(read (head count))])))
 --    putStrLn ( show ( sum (foldr (\i s -> next_generation rules s) (get_initial_state input) [1..20] )))
 --  putStrLn (show (get_initial_state input))
 --  putStrLn (show (get_rules input))

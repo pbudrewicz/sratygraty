@@ -1,6 +1,7 @@
 import Data.Char
 import Data.List
 import qualified Data.Set as Set
+import System.Environment
 
 next_generation :: [[Int]] -> Set.Set Int  -> Set.Set Int 
 next_generation rules px = Set.fromList [ p | p <- [(Set.findMin px - 2)..(Set.findMax px + 2)], check_rules p px rules ] 
@@ -31,9 +32,10 @@ decode_rule :: String -> [Int]
 decode_rule rule = map  (\(c,v) -> v) (filter (\(c, v) -> (c == '#')) (zip rule [-2, -1, 0, 1, 2] ))
 
 main = do
+  count <- getArgs
   input <- getContents
   let rules = get_rules input in
-    putStrLn ( show ( sum (Set.elems (foldl' (\s i -> next_generation rules s) (Set.fromList (get_initial_state input)) [1..1000000]))))
+    putStrLn ( show ( sum (Set.elems (foldl' (\s i -> next_generation rules s) (Set.fromList (get_initial_state input)) [1..(read (head count))]))))
 --    putStrLn ( show ( sum (foldr (\i s -> next_generation rules s) (get_initial_state input) [1..20] )))
 --  putStrLn (show (get_initial_state input))
 --  putStrLn (show (get_rules input))
