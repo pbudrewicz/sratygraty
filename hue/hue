@@ -28,6 +28,7 @@ FAKE_bri=111
 FAKE_ct="ct 200 111"
 FAKE_xy="xy $RED_CORNER 111"
 FAKE_hue="hue 45000 150 111"
+FAKE_t="t 2800 111"
 
 # sunrise color arch and brightnes sequence
 SUNRISE="0.68 0.3 1
@@ -386,7 +387,7 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
 	    :
 	    ;;
 	[tT]-xy|xy-[tT])
-	    :
+	     show_help 1 'Cannot transit to T schema from current color - use "transit from"'
 	    ;;
 	ct-xy)
 	    SAVED_COLOR="$( ct_2_xy $( first $SAVED_COLOR ) )"
@@ -413,7 +414,8 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
                     show_help 1 too few parameters specified $*
                 fi
                 schema=t
-                NEW_COLOR=$( interpolate $STEPS T $SAVED_TEMP $SAVED_BRIGHTNESS $2 $3 $i) ;;
+                NEW_COLOR=$( interpolate $STEPS T $SAVED_TEMP $SAVED_BRIGHTNESS $2 $3 $i) 
+                ;;
             *)      
                 if [ "$2" = "" ] ; then
                     show_help 1 too few parameters specified $*
@@ -687,6 +689,10 @@ get_color () { # one light only - passed as parameter
             hue)
                 feedback Faking light $1 is $FAKE_hue.
                 echo $FAKE_hue 
+                ;;
+            [tT])
+                feedback Faking light $1 is $FAKE_t
+                echo $FAKE_t 
                 ;;
             *)
                 show_help 1 bad schema for dry run: $DRY_SCHEMA
