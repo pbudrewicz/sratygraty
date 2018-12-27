@@ -1,5 +1,5 @@
-data Tree = Node { children :: [Tree], meta :: [Int], len :: Int } | Empty | BadData deriving Show
-data TreeData = TreeData { tree :: Tree, len :: Int } deriving Show
+data Tree = Tree { children :: [Tree], meta :: [Int], len :: Int } | Empty | BadData deriving Show
+-- data TreeData = TreeData { tree :: Tree, len :: Int } deriving Show
 -- type Meta = [Int]
 
 
@@ -15,16 +15,22 @@ data TreeData = TreeData { tree :: Tree, len :: Int } deriving Show
 -- getMeta :: Tree -> [Int] 
 -- getMeta Node( _, m ) = m
 
-makeTree :: [Int] -> TreeData
-makeTree [] = TreeData { tree=Empty, len=0 }
-makeTree (0:y:xs) = TreeData { tree=Node { children=[], meta=(take y xs)}, len=y+2 }
-makeTree (x:_:[]) = TreeData { tree=BadData, len=2 }
-makeTree (x:y:xs) = TreeData { tree=Node { children=(tree firstChild):(children (tree subTree)), meta=(take y (drop length xs)) }, len=length } where 
-                                                                                                                       firstChild = makeTree xs
-                                                                                                                       subTree = makeTree( x-1:y:(drop (len firstChild) xs ))
-                                                                                                                       length = (len firstChild) + (len subTree)
+makeTree :: [Int] -> Tree
+makeTree [] = Empty
+makeTree (0:y:xs) = Tree { children=[], meta=take y xs, len=y+2 }
+makeTree (x:_:[]) = BadData
+makeTree (x:y:xs) = Tree { children= firstChild:(children subTree), meta=(take y (drop treeLength xs)), len=treeLength } where 
+                                                                                                                       firstChild = makeSubTree xs
+                                                                                                                       subTree = makeSubTree( x-1:y:(drop (len firstChild) xs ))
+                                                                                                                       treeLength = (len firstChild) + (len subTree)
 
--- makeSubTree :: [Int] -> [TreeData]
+makeSubTree :: [Int] -> Tree
+makeSubTree [] = Empty
+makeSubTree (0:y:xs) = Tree { children=[], meta=[], len=2 }
+makeSubTree (x:y:xs) = Tree { children=firstChild:(children subTree), meta=(take y (drop treeLength xs)), len=treeLength } where
+                                                                                                                       firstChild = makeSubTree xs
+                                                                                                                       subTree = makeSubTree( x-1:y:(drop (len firstChild) xs ))
+                                                                                                                       treeLength = (len firstChild) + (len subTree)
 
 -- sumMeta :: [Int] -> Int
 -- sumMeta [] = 0
@@ -32,10 +38,10 @@ makeTree (x:y:xs) = TreeData { tree=Node { children=(tree firstChild):(children 
 
 sumMeta :: Tree -> Int
 sumMeta Empty = 0
-sumMeta Node { children = [], meta=meta } = sum meta
-sumMeta Node { children = children, meta = meta } = sum meta + sum (map sumMeta children )
+sumMeta Tree { children = [], meta=meta } = sum meta
+sumMeta Tree { children = children, meta = meta } = sum meta + sum (map sumMeta children )
 
 main = do
   input <- getLine
   putStrLn (show  (makeTree (map read (words input))))
-  putStrLn (show (sumMeta (tree (makeTree (map read (words input))))))
+  putStrLn (show (sumMeta (makeTree (map read (words input)))))
