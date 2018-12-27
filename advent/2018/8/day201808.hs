@@ -1,16 +1,35 @@
-data Tree = Node { Children :: [Node], Meta :: [Integer] } | Empty
-data TreeData { t :: Tree, len :: Integer }
+data Tree = Node { children :: [Tree], meta :: [Int] } deriving Show
+data TreeData = TreeData { tree :: Tree, len :: Int } deriving Show
+-- type Meta = [Int]
 
 
-makeTree :: [Integer] -> TreeData
-makeTree [] = TreeData ( Empty, 0 )
-makeTree (0:y:xs) = Node { Children [], Meta take y xs } 
-makeTree (x:y:xs) = Node { Children ,  Meta take y  
+-- getTree :: TreeData -> Tree
+-- getTree TreeData{ } = tree
 
-sumMeta :: [Integer] -> Integer
-sumMeta [] = 0
-sumMeta (0:y:xs) = sum (take y xs) 
+-- getLen :: TreeData -> Int
+-- getLen TreeData{ } = len
+
+-- getChildren :: Tree -> [Tree]
+-- getChildren Node( ch, _ ) = ch
+
+-- getMeta :: Tree -> [Int] 
+-- getMeta Node( _, m ) = m
+
+makeTree :: [Int] -> TreeData
+makeTree [] = TreeData { tree=Node { children=[], meta=[] }, len=0 }
+makeTree (0:y:xs) = TreeData { tree=Node { children=[], meta=(take y xs)}, len=y } 
+makeTree (x:y:xs) = TreeData { tree=Node { children=(tree firstChild):(children (tree subTree)), meta=[] }, len=(len subTree) } where 
+                                                                                                                       firstChild = makeTree xs
+                                                                                                                       subTree = makeTree( x-1:y:(drop (len firstChild) xs ))
+
+-- sumMeta :: [Int] -> Int
+-- sumMeta [] = 0
+-- sumMeta (0:y:xs) = sum (take y xs) 
+
+sumMeta :: Tree -> Int
+sumMeta Node { children = []} = sum meta
+sumMeta Node {  } = sum meta + sum (map sumMeta children )
 
 main = do
   input <- getLine
-  putStrLn show (sum (makeTree (map read (words input))))
+  putStrLn show (makeTree (map read (words input)))
