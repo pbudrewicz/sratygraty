@@ -28,6 +28,7 @@ FAKE_bri=111
 FAKE_ct="ct 200 111"
 FAKE_xy="xy $RED_CORNER 111"
 FAKE_hue="hue 45000 150 111"
+FAKE_t="t 2800 111"
 
 # sunrise color arch and brightnes sequence
 SUNRISE="0.68 0.3 1
@@ -137,7 +138,7 @@ interpolate () { # this function takes
           TOB=$8
 	  STEP=$9
           ;;
-      ct)
+      ct|[Tt])
           FROM1=$3
           FROMB=$4
           TO1=$5
@@ -184,6 +185,11 @@ interpolate () { # this function takes
 	  debug mirek:$VAL1
           echo $SCHEMA $VAL1 $BRI
           ;;
+      [tT])
+	  VAL1=$( calc %d "((($TO1 / $FROM1) ** (1.0/$STEPS)) ** $STEP ) * $FROM1" )
+	  debug temp:$VAL1
+	  echo t $VAL1  $BRI
+	  ;;
       pair)
 	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
 	  VAL2=$( calc "($TO2 - $FROM2)/$STEPS * $STEP + $FROM2" )          
@@ -338,26 +344,27 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
         case $schema in
             xy|hue)                                
                 if [ "$4" = "" ] ; then
-                    show_help 1 too few parameters $*
+                    show_help 1 too few parameters: two numbers expected $*
                 fi
                 set_bulb_color $light $schema $2 $3 $4
                 shift 4
                 ;;
             ct)
                 if [ "$3" = "" ] ; then
-                    show_help 1 too few parameters $*
+                    show_help 1 too few parameters: mirek expected $*
                 fi
                 set_bulb_color $light $schema $2 $3
                 shift 3
                 ;;
-            T*)
-                COLOR=$( describe_color $schema )
+            [tT])
                 if [ "$2" = "" ] ; then
-                    show_help 1 too few parameters $*
+                    show_help 1 too few parameters: tempearature expected $*
                 fi
-                schema=xy
-                set_bulb_color $light xy $COLOR $2
-                shift 2
+                schema=T
+		COLOR=T$2
+		SAVED_TEMP=$2
+                set_bulb_color $light $COLOR $3 
+                shift 3
                 ;;
             *)
                 COLOR=$( describe_color $schema )
@@ -372,11 +379,28 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
     fi
     
     schema=$1
+
     if [ "$schema" = "" ] ; then
 	show_help 1 no target color description
     fi
     SAVED_COLOR=$( get_color $light )
     SAVED_SCHEMA=$( first $SAVED_COLOR )
+    SAVED_BRIGHTNESS=$( get_brightness $light )
+    TRANSIT="$SAVED_SCHEMA-$schema"
+    case "$TRANSIT" in
+	xy-xy|ct-ct|hue-hue|[tT]-[tT])
+	    :
+	    ;;
+	[tT]-xy|xy-[tT])
+	     show_help 1 'Cannot transit to T schema from current color - use "transit from"'
+	    ;;
+	ct-xy)
+	    SAVED_COLOR="$( ct_2_xy $( first $SAVED_COLOR ) )"
+	    ;;
+	*)
+	    :	    show_help 1 Cannot transit from $SAVED_SCHEMA to $schema
+	    ;;
+    esac
     feedback transit from $SAVED_COLOR to "$@" in $STEPS steps
     for i in $( seq 1 $STEPS ) ; do
         case $1 in # hands off 
@@ -390,13 +414,13 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
                     show_help 1 too few parameters specified $*
                 fi
                 NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3  $i) ;;
-            T*)      
-                if [ "$2" = "" ] ; then
+            [tT])      
+                if [ "$3" = "" ] ; then
                     show_help 1 too few parameters specified $*
                 fi
-                COLOR=$( describe_color $1 )
-                schema=xy
-                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $COLOR $2 $i) ;;
+                schema=t
+                NEW_COLOR=$( interpolate $STEPS T $SAVED_TEMP $SAVED_BRIGHTNESS $2 $3 $i) 
+                ;;
             *)      
                 if [ "$2" = "" ] ; then
                     show_help 1 too few parameters specified $*
@@ -405,11 +429,11 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
                 schema=xy
                 NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $COLOR $2 $i) ;;           
         esac
-        if [ "$schema" != "$SAVED_SCHEMA" ] ; then
-            # TODO: transfer  ct -> xy
-            echo "Cannot transit from $SAVED_SCHEMA to $schema"
-            exit 1
-        fi
+#         if [ "$schema" != "$SAVED_SCHEMA" ] ; then
+#             # TODO: transfer  ct -> xy
+#             echo "Cannot transit from $SAVED_SCHEMA to $schema"
+#             exit 1
+#         fi
         set_bulb_color $light $NEW_COLOR 
         sleep $SLEEP
         maybe_give_up $light
@@ -671,6 +695,10 @@ get_color () { # one light only - passed as parameter
                 feedback Faking light $1 is $FAKE_hue.
                 echo $FAKE_hue 
                 ;;
+            [tT])
+                feedback Faking light $1 is $FAKE_t
+                echo $FAKE_t 
+                ;;
             *)
                 show_help 1 bad schema for dry run: $DRY_SCHEMA
                 ;;
@@ -797,8 +825,12 @@ hue set brightness {brightness:1-254} - setting brightnes
     maybe_help_needed "$@"
     if [ "$1" = "" ] ; then
         show_help 1 no brightness value specified
-    fi    
-    BRIGHTNESS=$1
+    fi
+    case $1 in
+	max) BRIGHTNESS=254 ;;
+	min) BRIGHTNESS=1 ;;
+	*)  BRIGHTNESS=$1 ;;
+    esac
     mandatory_lights
     feedback setting brightness of light $light to $BRIGHTNESS    
     FAKE_bri=$BRIGHTNESS
@@ -814,9 +846,15 @@ hue [set] color hue {hue:0-65535} {saturation:1-254} {brightness:1-254}
     mandatory_lights
     if [ "$3" = "" ] ; then
         show_help 1 $*
+    else
+	case $3 in
+	    max) BRIGHTNESS=254 ;;
+	    min) BRIGHTNESS=1 ;;
+	    *)  BRIGHTNESS=$3 ;;
+	esac
     fi    
     feedback setting hue to "$@"
-    polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$2',"bri":'$3'}' http://$bridge_ip/api/$user_key/lights/$light/state     
+    polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$2',"bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state     
 }
 
 set_xy () {
@@ -828,11 +866,17 @@ CIE set color xy {x} {y} {brightness:1-254}
     maybe_help_needed "$@"
     if [ "$3" = "" ] ; then
         show_help 1 too few parameters specified
+    else
+	case $3 in
+	    max) BRIGHTNESS=254 ;;
+	    min) BRIGHTNESS=1 ;;
+	    *)  BRIGHTNESS=$3 ;;
+	esac
     fi    
     mandatory_lights
     
-    feedback setting CIE color of light $light to "$@"
-    polite_curl -s -X PUT -d '{"on":true, "xy":['$1', '$2'], "bri":'$3'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    feedback setting CIE color of light $light to "$@" 
+    polite_curl -s -X PUT -d '{"on":true, "xy":['$1', '$2'], "bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
 
 set_ct () {
@@ -843,10 +887,16 @@ hue set color ct  {mirek:153-500} {brightness:1-254}
     maybe_help_needed "$@"    
     if [ "$2" = "" ] ; then
         show_help 1 too few parameters specified
+    else
+	case $2 in
+	    max) BRIGHTNESS=254 ;;
+	    min) BRIGHTNESS=1 ;;
+	    *)  BRIGHTNESS=$2 ;;
+	esac
     fi    
     mandatory_lights
     feedback setting light $light to  mirek "$@"
-    polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$2'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state 
 }
     
 set_color () { 
@@ -858,7 +908,7 @@ hue set color
             or named color:       
           red|orange|yellow|green|blue|violet
             or temperature 
-          T1500 - T7000 -- color temperature in multiples of 500
+          T1000 - T20000 -- color temperature in K
 "
     maybe_help_needed "$@"
     mandatory_lights
@@ -921,6 +971,14 @@ set_bulb_color () { # this is Internal procedure not accessible
             set_hue "$@"
             FAKE_hue="hue $*"
             ;;
+	[tT])
+            if [ "$2" = "" ] ; then
+                show_help 1 temperature and brightness expected
+            fi
+	    COLOR=$( K_2_xy T$1 )
+	    FAKE_t="T $1"
+	    set_xy $COLOR $2 T$1
+	    ;;
         *)
             COLOR=$( describe_color $schema )
             FAKE_xy="xy $COLOR $1"
