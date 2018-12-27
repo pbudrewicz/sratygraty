@@ -172,14 +172,15 @@ forecast_show () {
         if ! is_the_day $date ; then continue ; fi 
 
         COLOR=$( temp2color.sh $T)
+        feedback $date: T=$T 
         hue -l $light set color xy $COLOR $BRIGHTNESS $VERBOSITY
         sleep 1
 
         CONDITION_COUNT=$( weather count "{list}[$i]{weather}" )
         for c in $(seq 0 $(( $CONDITION_COUNT - 1 )) ) ; do
             condition=$( weather get "{list}[$i]{weather}[$c]{main}" ) 
+            feedback $date $condition
             show_condition $condition
-            feedback $date $condition $T 
         done
         #hue -l 3 alert 
         #    sleep 1
