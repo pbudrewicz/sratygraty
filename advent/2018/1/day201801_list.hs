@@ -13,9 +13,11 @@ firstDouble seen (x:xs) | elem x seen = (x:seen)
                         | otherwise = firstDouble (x:seen) xs
 
 freqList :: String -> [Integer]
-freqList input =  0 : [ x + a | (a, x) <-  zip (keepRepeating (map myread (words input))) (freqList input) ]
+-- freqList input =  0 : [ x + a | (a, x) <-  zip (keepRepeating (map myread (words input))) (freqList input) ]
+freqList input =  0 : [ x + a | (a, x) <-  zip (map myread (words input)) (freqList input) ]
 
 main = do
   input <- getContents
   putStrLn (show (foldl (\a n -> a + n ) 0 (map myread (words input))))
-  putStrLn (show (firstDouble [] (freqList input)))
+  putStrLn (show ( freqList input))
+  -- putStrLn (show (firstDouble [] (freqList input)))
