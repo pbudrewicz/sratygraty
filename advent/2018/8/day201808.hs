@@ -1,19 +1,4 @@
 data Tree = Tree { children :: [Tree], meta :: [Int], len :: Int } | Empty | BadData deriving Show
--- data TreeData = TreeData { tree :: Tree, len :: Int } deriving Show
--- type Meta = [Int]
-
-
--- getTree :: TreeData -> Tree
--- getTree TreeData{ } = tree
-
--- getLen :: TreeData -> Int
--- getLen TreeData{ } = len
-
--- getChildren :: Tree -> [Tree]
--- getChildren Node( ch, _ ) = ch
-
--- getMeta :: Tree -> [Int] 
--- getMeta Node( _, m ) = m
 
 makeTree :: [Int] -> Tree
 makeTree [] = Empty
@@ -30,14 +15,16 @@ makeChildren (x:xs) = firstChild:subTree where
                                             firstChild = makeTree xs
                                             subTree = makeChildren( x-1:(drop (len firstChild) xs))
 
--- sumMeta :: [Int] -> Int
--- sumMeta [] = 0
--- sumMeta (0:y:xs) = sum (take y xs) 
-
 sumMeta :: Tree -> Int
 sumMeta Empty = 0
 sumMeta Tree { children = [], meta=meta } = sum meta
-sumMeta Tree { children = children, meta = meta } = sum meta + sum (map sumMeta children )
+sumMeta Tree { children = children, meta = meta } =  sum (map (\m -> element m children)  meta )
+
+element :: Int -> [Tree] -> Int
+element 0 _ = 0
+element _ [] = 0
+element 1 (x:xs) = sumMeta x 
+element n (x:xs) = element (n-1) xs
 
 main = do
   input <- getLine
