@@ -19,18 +19,16 @@ makeTree :: [Int] -> Tree
 makeTree [] = Empty
 makeTree (0:y:xs) = Tree { children=[], meta=take y xs, len=y+2 }
 makeTree (x:_:[]) = BadData
-makeTree (x:y:xs) = Tree { children= firstChild:(children subTree), meta=(take y (drop treeLength xs)), len=treeLength } where 
-                                                                                                                       firstChild = makeSubTree xs
-                                                                                                                       subTree = makeSubTree( x-1:y:(drop (len firstChild) xs ))
-                                                                                                                       treeLength = (len firstChild) + (len subTree)
+makeTree (x:y:xs) = Tree { children=subTree, meta=(take y (drop treeLength xs)), len=treeLength+2+y } where 
+                                                                                                       subTree = makeChildren(x:xs)
+                                                                                                       treeLength = sum  (map len subTree)
 
-makeSubTree :: [Int] -> Tree
-makeSubTree [] = Empty
-makeSubTree (0:y:xs) = Tree { children=[], meta=[], len=2 }
-makeSubTree (x:y:xs) = Tree { children=firstChild:(children subTree), meta=(take y (drop treeLength xs)), len=treeLength } where
-                                                                                                                       firstChild = makeSubTree xs
-                                                                                                                       subTree = makeSubTree( x-1:y:(drop (len firstChild) xs ))
-                                                                                                                       treeLength = (len firstChild) + (len subTree)
+makeChildren :: [Int] -> [Tree]
+makeChildren [] = []
+makeChildren (0:xs) = []
+makeChildren (x:xs) = firstChild:subTree where
+                                            firstChild = makeTree xs
+                                            subTree = makeChildren( x-1:(drop (len firstChild) xs))
 
 -- sumMeta :: [Int] -> Int
 -- sumMeta [] = 0
