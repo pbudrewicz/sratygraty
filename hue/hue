@@ -364,7 +364,7 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
 		COLOR=T$2
 		SAVED_TEMP=$2
 		SAVED_COLOR="$schema $2 $3"
-                SAVED_BRIGHTNESS=$( get_brightness $light )
+                SAVED_BRIGHTNESS=$3
                 set_bulb_color $light $schema $SAVED_TEMP $3 
                 shift 3
                 ;;
@@ -381,6 +381,7 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
     else
       SAVED_COLOR=$( get_color $light )
       SAVED_SCHEMA=$( first $SAVED_COLOR )
+      SAVED_BRIGHTNESS=$( get_brightness $light )
     fi
 
     #schema="$1"
@@ -974,7 +975,7 @@ set_bulb_color () { # this is Internal procedure not accessible
             fi
 	    COLOR=$( K_2_xy T$1 )
 	    FAKE_t="T $1"
-	    set_xy $COLOR $2 T$1 $3
+	    set_xy $COLOR $2
 	    ;;
         *)
             COLOR=$( describe_color $schema )
