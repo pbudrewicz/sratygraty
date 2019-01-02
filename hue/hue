@@ -347,7 +347,7 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
                     show_help 1 too few parameters: two numbers expected $*
                 fi
                 set_bulb_color $light $SAVED_SCHEMA $2 $3 $4
-                SAVED_COLOR="xy $2 $3"
+                SAVED_COLOR="$SAVED_SCHEMA $2 $3"
                 shift 4
                 ;;
             ct)
