@@ -340,41 +340,42 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
     mandatory_lights
     if [ "$1" = "from" ] ; then 
         shift
-        schema=$1 
-        case $schema in
+        SAVED_SCHEMA=$1 
+        case $SAVED_SCHEMA in
             xy|hue)                                
                 if [ "$4" = "" ] ; then
                     show_help 1 too few parameters: two numbers expected $*
                 fi
-                set_bulb_color $light $schema $2 $3 $4
+                set_bulb_color $light $SAVED_SCHEMA $2 $3 $4
+                SAVED_COLOR="xy $2 $3"
                 shift 4
                 ;;
             ct)
                 if [ "$3" = "" ] ; then
                     show_help 1 too few parameters: mirek expected $*
                 fi
-                set_bulb_color $light $schema $2 $3
+                set_bulb_color $light $SAVED_SCHEMA $2 $3
+                SAVED_COLOR="ct $2"
                 shift 3
                 ;;
             [tT])
                 if [ "$2" = "" ] ; then
                     show_help 1 too few parameters: tempearature expected $*
                 fi
-                SAVED_SCHEMA=$schema
-		COLOR=T$2
 		SAVED_TEMP=$2
-		SAVED_COLOR="$schema $2 $3"
+		SAVED_COLOR="T $2 $3"
                 SAVED_BRIGHTNESS=$3
-                set_bulb_color $light $schema $SAVED_TEMP $3 
+                set_bulb_color $light $SAVED_SCHEMA $SAVED_TEMP $3 
                 shift 3
                 ;;
-            *)
-                COLOR=$( describe_color $schema )
+            *)  # this is not de facto a schema: red, blue, green, T3000
+                COLOR=$( describe_color $SAVED_SCHEMA )
                 if [ "$2" = "" ] ; then
                     show_help 1 too few parameters - $*
                 fi
-                schema=xy
+                SAVED_SCHEMA=xy
                 set_bulb_color $light xy $COLOR $2
+                SAVED_COLOR=$( get_color $light )
                 shift 2
                 ;;
         esac
@@ -384,17 +385,16 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
       SAVED_BRIGHTNESS=$( get_brightness $light )
     fi
 
-    #schema="$1"
-
     if [ "$1" = "" ] ; then
 	show_help 1 no target color description
     fi
+    schema="$1"
     TRANSIT="$SAVED_SCHEMA-$schema"
     case "$TRANSIT" in
-	xy-xy|ct-ct|hue-hue|[tT]-[tT])
+	xy-xy|ct-ct|hue-hue|[tT]-xy|[tT]-[tT])
 	    :
 	    ;;
-	[tT]-xy|xy-[tT])
+        xy-[tT])
 	     show_help 1 'Cannot transit to T schema from current color - use "transit from"'
 	    ;;
 	ct-xy)
