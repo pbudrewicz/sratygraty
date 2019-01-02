@@ -202,7 +202,7 @@ interpolate () { # this function takes
 }
 
 debug () {
-  :  echo "$@" >&2
+:   echo "$@" >&2
 }
 
 calc () { # use perl for floating point calculations
@@ -347,7 +347,7 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
                     show_help 1 too few parameters: two numbers expected $*
                 fi
                 set_bulb_color $light $SAVED_SCHEMA $2 $3 $4
-                SAVED_COLOR="$SAVED_SCHEMA $2 $3"
+                SAVED_COLOR="$SAVED_SCHEMA $2 $3 $4"
                 shift 4
                 ;;
             ct)
@@ -355,7 +355,7 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
                     show_help 1 too few parameters: mirek expected $*
                 fi
                 set_bulb_color $light $SAVED_SCHEMA $2 $3
-                SAVED_COLOR="ct $2"
+                SAVED_COLOR="ct $2 $3"
                 shift 3
                 ;;
             [tT])
@@ -404,14 +404,15 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
 	    :	    show_help 1 Cannot transit from $SAVED_SCHEMA to $schema
 	    ;;
     esac
-    feedback transit from $SAVED_COLOR to "$@" in $STEPS steps
+    feedback transit from $SAVED_COLOR $SAVED_BRIGHTNESS to "$@" in $STEPS steps
     for i in $( seq 1 $STEPS ) ; do
         case $1 in # hands off 
             xy|hue)                                
                 if [ "$4" = "" ] ; then
                     show_help 1 too few parameters specified $*
                 fi
-                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3 $4 $i) ;;            
+                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3 $4 $i) 
+		;;
             ct)
                 if [ "$3" = "" ] ; then
                     show_help 1 too few parameters specified $*
