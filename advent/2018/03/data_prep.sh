@@ -1,0 +1,1 @@
+perl -ne 'print( join( "\t", m/\d+/g ), "\n")' < input1.txt > input1_tabbed.txt #|awk 'BEGIN { maxx = 0; maxy = 0 } { if ($2+$4 > maxx) { maxx = $2 + $4; idx=$1 } ; if ($3+$5 > maxy) { maxy = $3 + $5; idy = $1 } } END { printf "maxx:%d-id:%d, maxy:%d-id:%d\n", maxx, idx, maxy, idy }' 
