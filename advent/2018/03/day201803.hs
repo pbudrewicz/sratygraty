@@ -11,6 +11,14 @@ readRegDef :: [String] -> RegDef
 readRegDef [a,b,c,d,e] = (read a,read b,read c,read d,read e)
 readRegDef _ = (-1,-1,-1,-1,-1)
 
+ptInReg :: (Int,Int) -> RegDef -> Bool
+ptInReg (x,y) (i,l,t,w,h) = x > l && x <= (l+w) && y > t && y <= (t+h)
+
+countMulti :: [RegDef] -> Int
+countMulti defs = length [ (x,y) | x <- [1..1000], y <- [1..1000], let regs = foldl (\cnt reg -> if ptInReg (x,y) reg then cnt+1 else cnt) 0 defs, regs > 1 ]
+
+-- GARBAGE BELOW
+
 replace :: Int -> a -> [a] -> [a]
 replace n c xs = take (n-1) xs ++ [c] ++ drop n xs
 
@@ -18,6 +26,7 @@ showRow :: [MapSpot] -> String
 showRow [] = "\n"
 showRow (x:[]) = show( x ) ++ "\n"
 showRow (x:xs) = show( x ) ++ ":" ++ showRow xs
+
 
 showMap :: Map -> String
 showMap [] = ""
@@ -30,17 +39,19 @@ insertMap x y id amap = replace y row amap where
 addRegToMap :: Map -> RegDef -> Map
 addRegToMap amap (id,left,top,width,height) = foldl (\m (x,y) -> insertMap x y id m) amap [ (a,b) | a <- [(left+1) .. (left+width)], b <- [(top+1) .. (top + height)] ]
 
-emptyMap = (replicate 8 ( replicate 8 [] ) )
+emptyMap = (replicate 1000 ( replicate 1000 [] ) )
 
 calcMulti :: Map -> Int
 calcMulti m = foldl (\cnt r -> cnt + foldl (\a c -> if length c > 1 then a+1 else a) 0 r) 0 m
 
+-- END OF GARBAGE
+
 main = do
   input <- getContents
   let myinput = map words (lines input)
-      mydefs  = map readRegDef myinput
-      amap = (foldl addRegToMap emptyMap (map readRegDef (map words (lines input)))) in 
-        putStrLn (show (calcMulti amap))
+      mydefs  = map readRegDef myinput in
+      putStrLn (show (countMulti mydefs))
+--      amap = (foldl addRegToMap emptyMap (map readRegDef (map words (lines input)))) in 
+        --putStrLn (show (calcMulti amap))
 --      putStrLn (showMap amap)
       --putStrLn (show (map readRegDef myinput))
-
