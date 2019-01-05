@@ -25,25 +25,22 @@ showMap (x:xs) = showRow x ++ showMap xs
 
 insertMap :: Int -> Int -> Id -> Map -> Map
 insertMap x y id amap = replace y row amap where
-                       row = (replace x (id:((amap !! y) !! x)) (amap !! y)) 
+                       row = (replace x (id:((amap !! (y-1)) !! (x-1))) (amap !! (y-1))) 
 
 addRegToMap :: Map -> RegDef -> Map
--- addRegToMap amap (id,left,top,width,height) = insertMap (left+1) (top+1) id amap
 addRegToMap amap (id,left,top,width,height) = foldl (\m (x,y) -> insertMap x y id m) amap [ (a,b) | a <- [(left+1) .. (left+width)], b <- [(top+1) .. (top + height)] ]
-
-addTestToMap :: Map -> [(Int,Int)] -> Map
-addTestToMap amap list = foldl (\m (x,y) -> insertMap x y 1 m) amap list -- [(1,2),(2,1)] -- [(1,1),(1,2),(2,1),(2,2),(3,3),(5,5)]
 
 emptyMap = (replicate 8 ( replicate 8 [] ) )
 
+calcMulti :: Map -> Int
+calcMulti m = foldl (\cnt r -> cnt + foldl (\a c -> if length c > 1 then a+1 else a) 0 r) 0 m
+
 main = do
   input <- getContents
-  putStrLn (showMap (addTestToMap emptyMap [(3,2),(2,3)] ))
-  putStrLn (showMap (addTestToMap emptyMap [(2,3),(3,2)] ))
   let myinput = map words (lines input)
       mydefs  = map readRegDef myinput
       amap = (foldl addRegToMap emptyMap (map readRegDef (map words (lines input)))) in 
-        putStrLn (showMap amap)
+        putStrLn (show (calcMulti amap))
 --      putStrLn (showMap amap)
       --putStrLn (show (map readRegDef myinput))
 
