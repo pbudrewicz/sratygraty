@@ -15,7 +15,19 @@ ptInReg :: (Int,Int) -> RegDef -> Bool
 ptInReg (x,y) (i,l,t,w,h) = x > l && x <= (l+w) && y > t && y <= (t+h)
 
 countMulti :: [RegDef] -> Int
-countMulti defs = length [ (x,y) | x <- [1..1000], y <- [1..1000], let regs = foldl (\cnt reg -> if ptInReg (x,y) reg then cnt+1 else cnt) 0 defs, regs > 1 ]
+countMulti defs = length [ (x,y) | x <- [1..1000], y <- [1..1000], let regs = foldl (\cnt reg -> if ptInReg (x,y) reg then cnt+1 else cnt) 0 defs, regs > 0 ]
+
+getMulti :: [RegDef] -> [Id]
+getMulti defs = concat [ regs | x <- [1..1000], y <- [1..1000], let regs = foldl (\regs reg@(i,l,t,w,h) -> if ptInReg (x,y) reg then i:regs else regs) [] defs, length regs > 1 ]
+
+remove :: Id -> [Id] -> [Id]
+remove i [] = []
+remove i (x:xs) | i == x = remove i xs
+                | otherwise = x:(remove i xs)
+
+findNonOverlapping :: [Id] -> [Id] -> [Id]
+findNonOverlapping ids [] = ids
+findNonOverlapping ids (x:xs) = findNonOverlapping (remove x ids) xs
 
 -- GARBAGE BELOW
 
@@ -50,8 +62,11 @@ main = do
   input <- getContents
   let myinput = map words (lines input)
       mydefs  = map readRegDef myinput in
-      putStrLn (show (countMulti mydefs))
+      putStrLn (show (findNonOverlapping [1..1381] (getMulti mydefs)))
+--      putStrLn (show (countMulti mydefs))
 --      amap = (foldl addRegToMap emptyMap (map readRegDef (map words (lines input)))) in 
         --putStrLn (show (calcMulti amap))
+
+
 --      putStrLn (showMap amap)
       --putStrLn (show (map readRegDef myinput))
