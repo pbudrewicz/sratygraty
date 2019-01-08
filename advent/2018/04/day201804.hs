@@ -29,13 +29,23 @@ getGuards (l:ls) = getGuards ls
                                 
 
 getSleepTime :: Id -> [LogRec] -> SleepTime
-getSleepTime guard alog = (\(id,slp,x) -> (guard,slp)) (foldl (\(i, acc, t) (m, s) -> case (i, s) of
-                                                                                            (id,Awake) -> if id == guard then (i, acc+m-t, m)
-                                                                                                                         else (i, acc, m)
-                                                                                            (_,Id g)   -> (g, acc, m)
-                                                                                            _          -> (i, acc, m)
+--getSleepTime guard alog = (\(id,slp,x) -> (guard,slp)) (foldl (\(i, acc, t) (m, s) -> case (i, s) of
+--                                                                                            (id,Awake) -> if id == guard then (i, acc+m-t, m)
+--                                                                                                                         else (i, acc, m)
+--                                                                                            (_,Id g)   -> (g, acc, m)
+--                                                                                            _          -> (i, acc, m)
+--                                                                                                    
+--                                                              ) (-1, 0, 0) alog)
+getSleepTime guard alog = (\(id,slp,x) -> (guard,slp)) (foldl (getGuardsSleeps :: (Id,Int,Int) -> (Int,State) -> (Id,Int,Int)) (-1, 0, 0) alog)
+                                                       where 
+                                                          getGuardsSleeps (i, acc, t) (m, Awake) | guard == i = (guard, acc+m-t,m)
+                                                                                                 | otherwise  = (i, acc, m)
+                                                          getGuardsSleeps (_, acc, _) (m, Id g) = (g, acc, m)
+                                                          getGuardsSleeps (i, acc, _) (m, _)    =  (i, acc, m)
+           
                                                                                                     
-                                                              ) (-1, 0, 0) alog)
+                                                              
+
 
 showSleeper :: SleepTime -> String
 showSleeper (id,t) = "Guard " ++ show id ++ " sleeped " ++ show t
