@@ -49,12 +49,12 @@ longestSleeper (x@(i,s):xs) | s > ls = x
 
 
 
-mostMinute :: [(Int,Int)] -> (Int,Int)
-mostMinute [] = (-1,0)
+mostMinute :: [(Int,Int,Int)] -> (Int,Int,Int)
+mostMinute [] = (-1,-1,0)
 mostMinute (x:[]) = x
-mostMinute (x@(m,c):xs) | c > mc = x
-                        | otherwise = mM
-                          where mM@(mm,mc) = mostMinute xs
+mostMinute (x@(m,g,c):xs) | c > mc = x
+                          | otherwise = mM
+                            where mM@(mm,mg,mc) = mostMinute xs
 
 countMinutes :: Id -> [LogRec] -> Int -> Int
 countMinutes guard alog min = length [ (f,t) | (f,t) <- sleepPeriods guard alog, min >= f && min < t ]
@@ -76,8 +76,9 @@ main = do
   let myinput = (lines input) 
       alog = map textToRec (sort myinput)
       guard = (\(g,s) -> g) (longestSleeper [  getSleepTime grd alog | grd <- getGuards alog ])
-      minute = (\(m,c) -> m) (mostMinute [(m,countMinutes guard alog m) | m <- [0..59]]) in
+      minute1 = (mostMinute [(m,grd,countMinutes grd alog m) | m <- [0..59], grd <- [guard]] ) 
+      minute2 = (mostMinute [(m,grd,countMinutes grd alog m) | m <- [0..59], grd <- getGuards alog] ) in
 --      putStrLn (unlines (map showSleeper [  getSleepTime guard alog | guard <- getGuards alog ]))
-      putStrLn (show (minute * guard))
+      putStrLn (show (map (\(m,g,c) -> m * g) [minute1, minute2]))
 --      putStrLn (show (longestSleeper [  getSleepTime guard alog | guard <- getGuards alog ]))
 --      putStrLn (unlines (map show alog))
