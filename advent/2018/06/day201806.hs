@@ -50,7 +50,7 @@ dedup (x:xs) | x `elem` xs = dedup xs
              | otherwise = x:(dedup xs)
 
 regionSize :: Char -> [(Char, (Int, Int))] -> Int
-regionSize c points = length [ x | (x,_) <- points, x == c ]
+regionSize c points =  length [ x | (x,_) <- points , x == c ]
 
 main = do
   input <- getContents
@@ -60,7 +60,7 @@ main = do
       regions = getRegions bounds points 
       br = dedup (boundaryRegions bounds regions)
       finiteRegions = dedup [ c | (c,_) <- points, not (c `elem` br) ] 
-      sizes = map (\c -> (c, regionSize c points)) finiteRegions in
+      sizes = map (\c -> (c, regionSize c regions)) finiteRegions in
 --      putStrLn (show (points))
       putStrLn (show (sizes))
     
