@@ -1,5 +1,6 @@
 import Text.Regex.Posix
 import Data.List
+import Data.Char
 
 type Step = Char
 type Succession = (Step, Step) 
@@ -14,8 +15,7 @@ stepPossible step done constraints = [ s1 | (s1, s2) <- constraints, s2 == step 
 
 isSubsetOf :: [Step] -> [Step] -> Bool
 isSubsetOf [] _ = True
-isSubsetOf _ [] = False
-isSubsetOf (e:ex) (s:sx) = (( e == s || e `elem` sx ) && ex `isSubsetOf` (s:sx) ) 
+isSubsetOf (e:ex) set = e `elem` set && ex `isSubsetOf` set
 
 dedup :: [Char] -> [Char]
 dedup [] = []
@@ -37,15 +37,13 @@ nextStep :: [Succession] -> ([Step],[Step]) -> ([Step],[Step])
 nextStep _ (done,[]) = (done,[]) 
 nextStep constraints (done,left) = nextStep constraints (doStep (head (sort ([ s | s <- left, stepPossible s done constraints] ))) (done, left))
 
--- findSteps :: ([Step],[Step]) ->  [Succession] -> ([Step],[Step])
--- findSteps state constraints = nstep:(findSteps nstate constraints) 
-                               -- where nstep = nextStep constraints state
-                                     -- nstate = doStep nstep state
+stepTime :: Char -> Int
+stepTime c = (ord c) - 4
 
 main = do
   input <- getContents
   let constraints = readConstraints (lines input)
       steps = dedup (concat (map (\(s1,s2) -> [s1, s2]) constraints)) in
-      putStrLn (show (reverse ((\(d,l) -> d) (nextStep constraints ([],steps) ))))
+      putStrLn (show (map (\c -> (c,stepTime c)) ((reverse ((\(d,l) -> d) (nextStep constraints ([],steps) ))))))
 --      putStrLn (show [ (s, getPrerequisites s constraints) | s <- steps ] )
 --      putStrLn (show [ s | s <- steps, stepPossible s [] constraints ] )
