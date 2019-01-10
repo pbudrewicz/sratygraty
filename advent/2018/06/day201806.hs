@@ -1,6 +1,7 @@
 import Text.Regex.Posix -- for regex
 
 data Point = Pt {pointx, pointy :: Int}
+maxDist = 10000
 
 readPair :: String -> (Int, Int)
 readPair x | x =~ patPair :: Bool = let (_,_,_,[g1,g2]) = (x =~ patPair :: (String, String, String, [String])) 
@@ -15,7 +16,9 @@ getBounds (n,s,w,e) (_,(x,y)) = (mn, ms, mw, me)
                                     mw = min w x
                                     me = max e x
 
-
+getDistances :: (Int, Int) -> [(Char, (Int, Int))] -> [Int]
+getDistances _ [] = []
+getDistances p ((_,x):ls) = (distance p x):(getDistances p ls)
 
 closestPoint :: (Int, Int) -> [(Char, (Int, Int))] -> [(Char, (Int, Int))]
 closestPoint p [] = [('#', p)]
@@ -52,6 +55,9 @@ dedup (x:xs) | x `elem` xs = dedup xs
 regionSize :: Char -> [(Char, (Int, Int))] -> Int
 regionSize c points =  length [ x | (x,_) <- points , x == c ]
 
+closestRegion :: (Int,Int,Int,Int) -> [(Char, (Int, Int))] -> Int
+closestRegion (n,s,w,e) regions = length [ (x,y) | x <- [w..e], y <- [s..n], (sum (getDistances (x,y) regions)) < maxDist ]
+
 main = do
   input <- getContents
   let points = [ (name, (x, y)) | (name, (x,y)) <- zip ['a'..] (map readPair (lines input)) ]
@@ -62,6 +68,6 @@ main = do
       finiteRegions = dedup [ c | (c,_) <- points, not (c `elem` br) ] 
       sizes = map (\c -> (c, regionSize c regions)) finiteRegions in
 --      putStrLn (show (points))
-      putStrLn (show (sizes))
+      putStrLn (show (sizes, closestRegion bounds points))
     
 
