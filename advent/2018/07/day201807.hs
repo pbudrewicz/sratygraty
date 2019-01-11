@@ -4,16 +4,16 @@ import Data.Char
 
 type Step = Char
 type Time = Int
-type Succession = (Step, Step) 
-type State = ([(Step,Time)],([(Step,Time)],Int),[Step])
+type Succession = (Step, Step) -- (prerequsite, step)
+-- State is (( list of pairs: step and the time step will be finished), pair of (list of (pairs of step and the finish time)) and number of busy workers, list of steps)
+type State = ([(Step,Time)],([(Step,Time)],Int),[Step]) 
+
+workerCnt = 2
 
 readConstraints :: [String] -> [Succession]
 readConstraints [] = []
 readConstraints (s:ss) = let (_,_,_,[pred,post]) = (s =~ "Step (.) must be finished before step (.) can begin." :: (String, String, String, [String]))
                          in (head pred,head post):(readConstraints ss)
-
-stepPossible :: Step -> [Step] -> [Succession] -> Bool
-stepPossible step done constraints = [ s1 | (s1, s2) <- constraints, s2 == step ] `isSubsetOf` done
 
 isSubsetOf :: [Step] -> [Step] -> Bool
 isSubsetOf [] _ = True
@@ -24,23 +24,31 @@ dedup [] = []
 dedup (x:xs) | x `elem` xs = dedup xs
              | otherwise = x:(dedup xs)
 
+stepIsExecutable :: Step -> [Step] -> [Succession] -> Bool
+stepIsExecutable step done constraints = [ s1 | (s1, s2) <- constraints, s2 == step ] `isSubsetOf` done
+
+stepIsDone :: Time -> Step -> [Step] -> [Succession] -> Bool
+stepIsDone t step done constraints = [ s1 | (s1, s2) <- constraints, s2 == step ] `isSubsetOf` done
+
 getPrerequisites :: Step -> [Succession] -> [Step]
 getPrerequisites s constraints = [ s1 | (s1, s2) <- constraints, s2 == s ]
 
-doStep :: Step -> State -> State
-doStep s (done,(exec,w),left) = ((s,t):done, (remove (s,t) exec, w-1), left) GUARDS NEEDED?
+doStep :: Step -> Time -> State -> State -- assume step isDone
+doStep s t (done,(exec,w),left) = ((s,t):done, (remove (s,t) exec, w-1), left) 
 
-executeStep :: Step -> State -> State
-executeStep s (done,(exec,w),left) = (done, ((s,stepTime s):exec,w+1): , remove s left) GUARDS?
+executeStep :: Time -> Step -> State -> State -- assume step IsExecutable
+executeStep t s (done,(exec,w),left) = (done, ((s,t+(stepTime s)):exec,w+1): , remove s left) 
 
 remove :: Step -> [Step] -> [Step]
 remove i [] = []
 remove i (x:xs) | i == x = remove i xs
                 | otherwise = x:(remove i xs)
 
-nextStep :: [Succession] -> ([Step],[Step]) -> ([Step],[Step])
-nextStep _ (done,[]) = (done,[]) 
-nextStep constraints (done,left) = nextStep constraints (doStep (head (sort ([ s | s <- left, stepPossible s done constraints] ))) (done, left))
+nextStep :: Time -> [Succession] -> State -> (Time,State)
+nextStep t _ s@(done,_,[]) = (t,s)
+nextStep t constraints curr@(done,(exec,w),left) = nextStep (t+1) constraints (doStep [ s | (s,t1) <- exec, t1 < t, stepIsExecutable s done constraints] ) (done, curr, left))
+
+nextStep constraints (done,left) = nextStep constraints (executeStep t (head (sort ([ s | s <- left, stepPossible s done constraints] ))) (done, left))
 
 stepTime :: Char -> Int
 stepTime c = (ord c) - 4
