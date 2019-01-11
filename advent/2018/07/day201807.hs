@@ -3,7 +3,9 @@ import Data.List
 import Data.Char
 
 type Step = Char
+type Time = Int
 type Succession = (Step, Step) 
+type State = ([(Step,Time)],([(Step,Time)],Int),[Step])
 
 readConstraints :: [String] -> [Succession]
 readConstraints [] = []
@@ -25,8 +27,11 @@ dedup (x:xs) | x `elem` xs = dedup xs
 getPrerequisites :: Step -> [Succession] -> [Step]
 getPrerequisites s constraints = [ s1 | (s1, s2) <- constraints, s2 == s ]
 
-doStep :: Step -> ([Step],[Step]) -> ([Step],[Step])
-doStep s (done,left) = (s:done, remove s left)
+doStep :: Step -> State -> State
+doStep s (done,(exec,w),left) = ((s,t):done, (remove (s,t) exec, w-1), left) GUARDS NEEDED?
+
+executeStep :: Step -> State -> State
+executeStep s (done,(exec,w),left) = (done, ((s,stepTime s):exec,w+1): , remove s left) GUARDS?
 
 remove :: Step -> [Step] -> [Step]
 remove i [] = []
