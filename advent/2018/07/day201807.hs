@@ -8,7 +8,7 @@ type Succession = (Step, Step) -- (prerequsite, step)
 -- State is (( list of pairs: step and the time step will be finished), pair of (list of (pairs of step and the finish time)) and number of busy workers, list of steps)
 type State = ([(Step,Time)],([(Step,Time)],Int),[Step]) 
 
-workerCnt = 2
+workerCnt = 5
 
 readConstraints :: [String] -> [Succession]
 readConstraints [] = []
@@ -48,11 +48,8 @@ remove i (x:xs) | i == x = remove i xs
 
 nextStep :: Time -> [Succession] -> State -> State
 nextStep t _ s@(done,([],_),[]) = s
-nextStep t constraints curr@(done,(exec,w),left) = let (cur_done,cur_exec,cur_left) = foldl (doStep t) curr [ s | (s,t1) <- exec, t1 < t] 
+nextStep t constraints curr@(done,(exec,w),left) = let (cur_done,cur_exec,cur_left) = foldl (doStep t) curr [ s | (s,t1) <- exec, t1 == t] 
                                                    in  nextStep (t+1) constraints (executeSteps t [s | s <- cur_left, stepIsExecutable s cur_done constraints ] (cur_done, cur_exec, cur_left) )
-
--- nextStep constraints (done,left) = nextStep constraints (executeStep t (head (sort ([ s | s <- left, stepPossible s done constraints] ))) (done, left))
-
 stepTime :: Char -> Int
 stepTime c = (ord c) - 4
 
