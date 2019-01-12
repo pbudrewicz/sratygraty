@@ -24,8 +24,8 @@ dedup [] = []
 dedup (x:xs) | x `elem` xs = dedup xs
              | otherwise = x:(dedup xs)
 
-stepIsExecutable :: Step -> [Step] -> [Succession] -> Bool
-stepIsExecutable step done constraints = [ s1 | (s1, s2) <- constraints, s2 == step ] `isSubsetOf` done
+stepIsExecutable :: Step -> [(Step,Time)] -> [Succession] -> Bool
+stepIsExecutable step done constraints = [ s1 | (s1, s2) <- constraints, s2 == step ] `isSubsetOf` (map (\(s,t) -> s) done)
 
 stepIsDone :: Time -> Step -> [Step] -> [Succession] -> Bool
 stepIsDone t step done constraints = [ s1 | (s1, s2) <- constraints, s2 == step ] `isSubsetOf` done
@@ -33,22 +33,25 @@ stepIsDone t step done constraints = [ s1 | (s1, s2) <- constraints, s2 == step 
 getPrerequisites :: Step -> [Succession] -> [Step]
 getPrerequisites s constraints = [ s1 | (s1, s2) <- constraints, s2 == s ]
 
-doStep :: Step -> Time -> State -> State -- assume step isDone
-doStep s t (done,(exec,w),left) = ((s,t):done, (remove (s,t) exec, w-1), left) 
+doStep :: Time -> State -> Step -> State -- assume step isDone
+doStep t (done,(exec,w),left) s = ((s,t):done, (remove (s,t) exec, w-1), left) 
 
-executeStep :: Time -> Step -> State -> State -- assume step IsExecutable
-executeStep t s (done,(exec,w),left) = (done, ((s,t+(stepTime s)):exec,w+1): , remove s left) 
-
-remove :: Step -> [Step] -> [Step]
+executeSteps :: Time -> [Step] -> State -> State -- assume step IsExecutable
+executeSteps _ [] state = state
+executeSteps t (s:ss) state@(done,(exec,w),left) | w < workerCnt = executeSteps t ss (done, ((s,t+(stepTime s)):exec,w+1), remove s left) 
+                                                 | otherwise = state
+                                           
+remove :: (Eq a) => a -> [a] -> [a]
 remove i [] = []
 remove i (x:xs) | i == x = remove i xs
                 | otherwise = x:(remove i xs)
 
-nextStep :: Time -> [Succession] -> State -> (Time,State)
-nextStep t _ s@(done,_,[]) = (t,s)
-nextStep t constraints curr@(done,(exec,w),left) = nextStep (t+1) constraints (doStep [ s | (s,t1) <- exec, t1 < t, stepIsExecutable s done constraints] ) (done, curr, left))
+nextStep :: Time -> [Succession] -> State -> State
+nextStep t _ s@(done,([],_),[]) = s
+nextStep t constraints curr@(done,(exec,w),left) = let (cur_done,cur_exec,cur_left) = foldl (doStep t) curr [ s | (s,t1) <- exec, t1 < t] 
+                                                   in  nextStep (t+1) constraints (executeSteps t [s | s <- cur_left, stepIsExecutable s cur_done constraints ] (cur_done, cur_exec, cur_left) )
 
-nextStep constraints (done,left) = nextStep constraints (executeStep t (head (sort ([ s | s <- left, stepPossible s done constraints] ))) (done, left))
+-- nextStep constraints (done,left) = nextStep constraints (executeStep t (head (sort ([ s | s <- left, stepPossible s done constraints] ))) (done, left))
 
 stepTime :: Char -> Int
 stepTime c = (ord c) - 4
@@ -57,6 +60,6 @@ main = do
   input <- getContents
   let constraints = readConstraints (lines input)
       steps = dedup (concat (map (\(s1,s2) -> [s1, s2]) constraints)) in
-      putStrLn (show (map (\c -> (c,stepTime c)) ((reverse ((\(d,l) -> d) (nextStep constraints ([],steps) ))))))
+      putStrLn (show (reverse ((\(d,c,l) -> d) (nextStep 0 constraints ([],([],0),steps)))))
 --      putStrLn (show [ (s, getPrerequisites s constraints) | s <- steps ] )
 --      putStrLn (show [ s | s <- steps, stepPossible s [] constraints ] )
