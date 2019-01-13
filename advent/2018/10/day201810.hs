@@ -35,5 +35,5 @@ main = do
   input <- getContents
   let constr = readConstraints (lines input)
       ((x,y),_) = head constr  in
-    putStrLn (show (getBounds constr))
+    putStrLn (unlines (showMessage (foldl (\pts i -> nextMove pts) constr [0..3])))
   
