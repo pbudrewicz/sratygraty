@@ -46,10 +46,11 @@ doTurn turn train | turn == 0 && train == '^' = '<'
 
 moveTrains :: Array (Int, Int) Char -> Int -> [Train] -> [Train] -> [Train]
 moveTrains _ _ _ [] = []
-moveTrains tracks tick moved (t:ts) = if crash t (moved ++ ts) || crash tm (moved  ++ ts) then (pos,'#',-1):tms
-                                                                                          else tm:tms
-                                        where tm@(pos,_,_) = (nextPos tracks tick t)
-                                              tms = moveTrains tracks tick (tm:moved) ts
+moveTrains tracks tick moved (t@(pos,_,_):ts) | crash t (moved ++ ts) = (pos,'#',-2):(moveTrains tracks tick moved ts) -- but it ignores '#'... :/
+                                              | crash tm (moved  ++ ts) = (mpos,'#',-1):tms 
+                                              | otherwise = tm:tms
+                                                where tm@(mpos,_,_) = (nextPos tracks tick t)
+                                                      tms = moveTrains tracks tick (tm:moved) ts
 
 crash :: Train -> [Train] -> Bool
 crash _ [] = False
