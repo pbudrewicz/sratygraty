@@ -28,7 +28,7 @@ nextPos tracks tick (pos@(x,y),t,turn) | t == '^' && tracks ! (x,y-1) == '|' = (
                                        | t == '<' && tracks ! (x-1,y) == '/' = ((x-1,y),'v',turn)
                                        | t == '<' && tracks ! (x-1,y) == '\\' = ((x-1,y),'^',turn)
                                        | t == '<' && tracks ! (x-1,y) == '+' = ((x-1,y),doTurn turn t, (turn + 1) `mod` 3)
-                                       | otherwise = ((x,y), t, -1)
+                                       | otherwise = ((x,y), '?', -1)
 
 doTurn :: Int -> Char -> Char
 doTurn turn train | turn == 0 && train == '^' = '<'
@@ -45,28 +45,26 @@ doTurn turn train | turn == 0 && train == '^' = '<'
                   | turn == 2 && train == '<' = '^'
 
 moveTrains :: Array (Int, Int) Char -> Int -> [Train] -> [Train] -> [Train]
-moveTrains _ _ _ [] = []
-moveTrains tracks tick moved (t@(pos,_,_):ts) | crash t (moved ++ ts) = (pos,'#',-2):(moveTrains tracks tick moved ts) -- but it ignores '#'... :/
-                                              | crash tm (moved  ++ ts) = (mpos,'#',-1):tms 
-                                              | otherwise = tm:tms
+moveTrains _ _ moved [] = moved
+moveTrains tracks tick moved (t@(pos,_,_):ts) | crash tm (moved ++ ts) = moveTrains tracks tick (removeCrashed mpos moved) (removeCrashed mpos ts)
+                                              | otherwise = moveTrains tracks tick (tm:moved) ts
                                                 where tm@(mpos,_,_) = (nextPos tracks tick t)
-                                                      tms = moveTrains tracks tick (tm:moved) ts
 
 crash :: Train -> [Train] -> Bool
 crash _ [] = False
-crash (_,'#',_) _ = False
-crash train ((_,'#',_):ts) = crash train ts
+-- crash (_,'#',_) _ = False
+-- crash train ((_,'#',_):ts) = crash train ts
 crash train@((x1,y1),_,_) (((x2,y2),_,_):ts) = (x1 == x2 && y1 == y2) || crash train ts
 
 removeCrashed :: (Int,Int) -> [Train] -> [Train]
 removeCrashed _ [] = []
-removeCrashed pos@(x,y) (t@((tx,ty),c,_):ts) | (x == tx && y == ty) || c == '#' = removeCrashed pos ts
+removeCrashed pos@(x,y) (t@((tx,ty),_,_):ts) | (x == tx && y == ty) = removeCrashed pos ts
                                              | otherwise = t:(removeCrashed pos ts)
 
-crashPos :: [Train] -> (Int,Int) 
-crashPos [] = (-1,-1)
-crashPos ((pos,'#',_):ts) = pos
-crashPos (_:ts) = crashPos ts
+-- crashPos :: [Train] -> (Int,Int) 
+-- crashPos [] = (-1,-1)
+-- crashPos ((pos,'#',_):ts) = pos
+-- crashPos (_:ts) = crashPos ts
 
 main = do
   input <- getContents
