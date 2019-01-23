@@ -58,7 +58,11 @@ neighborList field beasts neighbors fresh | nList == [] = newNeighbors
                                           | otherwise = neighborList field beasts newNeighbors nList
                                                       where 
                                                         newNeighbors = neighbors ++ fresh
-                                                        nList = dedup [((y+r,x+c),dist+1, beastAt beasts (y+r,x+c) ) | (y,x) <- [(-1,0),(0,-1),(0,1),(1,0)], ((r,c),dist,_) <- fresh, field ! (y+r,x+c) == '.' &&  beastAt beasts (r,c) == ' ' && not ((y+r,x+c) `elem` (map (\(a,b,c) -> a) newNeighbors)) ]
+                                                        nList = dedup [((y+r,x+c),dist+1, beastAt beasts (y+r,x+c) ) | (y,x) <- [(-1,0),(0,-1),(0,1),(1,0)],
+                                                                       ((r,c),dist,_) <- fresh,
+                                                                       field ! (y+r,x+c) == '.',
+                                                                       beastAt beasts (r,c) == ' ',
+                                                                       not ((y+r,x+c) `elem` (map (\(a,b,c) -> a) newNeighbors)) ] -- how to start from beast position?!
 
 showDistance :: Field -> Pos -> [Beast] -> [(Pos,Int,Char)] -> String
 showDistance field pos beasts neighbors | field ! pos == '.' && (beastAt beasts pos) == ' ' = dist
@@ -70,8 +74,8 @@ getDistance _ [] = "."
 getDistance pos ((p,dist,_):rest) | pos == p = if dist < 10 then show dist else "*"
                                 | otherwise = getDistance pos rest
 
-getTarget :: Field -> [Beast] -> Pos -> Char -> (Pos,Int,Char)
-getTarget field beasts start beast = (head (filter (\(p,d,b) -> b == beast) (neighborList field beasts [] [(start,0,'.')])))
+getTargets :: Field -> [Beast] -> Pos -> Char -> [(Pos,Int,Char)]
+getTargets field beasts start beast = filter (\(_,_,b) -> b == beast) (neighborList field (filter (\(p,_,_) -> p /= start) beasts) [] [(start,0,'.')])
 
 main = do
   input <- getContents
@@ -85,7 +89,8 @@ main = do
       neighbors = (neighborList field beasts [] [((9,21),0,'.')] )
       --in putStrLn (unlines ( [ foldl  (\acc c -> acc ++ (showMapElement field (c,r) beasts)) "" [0..cols]  | r <- [0..rows] ] ))
 --      in putStrLn (unlines ( [ foldl  (\acc c -> acc ++ (showDistance field (r,c) beasts neighbors)) "" [0..cols]  | r <- [0..rows] ] ))
-      in putStrLn (show (getTarget field beasts (9,21) 'E'))
+--      in putStrLn (show ( getTargets field beasts (9,25) 'E'))
+      in putStrLn (show (map (\(pos,b,_) -> getTargets field beasts pos (if b == 'E' then 'G' else 'E')) beasts))
 --      in putStrLn (show (neighborList field beasts [] [((20,6),0,'.')] ))
 
  --(show mytrains) ++ "\n" ++
