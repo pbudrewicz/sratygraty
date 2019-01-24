@@ -76,10 +76,10 @@ beastAt ((p,b,_):bs) pos | p == pos = b
 
 adjacent = [(-1,0),(0,-1),(0,1),(1,0)] :: [Pos]
 
--- chooseStep :: Field -> [Beast] -> Beast -> [Pos]
--- chooseStep field beasts beast@((r,c),b,_) | tgts == [] = []
-  --                             | otherwise = head ( [ (y+r,x+c) | (x,y) <= adjacent, 
-    --                             where tgts = getTargets field (r,c) b 
+chooseStep :: Field -> [Beast] -> Beast -> [Pos]
+chooseStep field beasts beast@((r,c),b,_) | tgts == [] = []
+                                          | otherwise = head ( [ (y+r,x+c) | (x,y) <- adjacent, WIPHERE
+                                              where tgts = getTargets field (r,c) b (other b) beasts
 
 neighborList :: Field -> [Beast] -> [(Pos,Distance,Species)] -> [(Pos,Distance,Species)] -> [(Pos,Distance,Species)]
 neighborList field beasts neighbors fresh | nList == [] = newNeighbors
