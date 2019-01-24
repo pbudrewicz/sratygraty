@@ -5,6 +5,14 @@ import qualified Data.Set as Set
 type Pos = (Int, Int)
 type Beast = (Pos, Char, Int)
 type Field = Array (Int, Int) Char
+data Species = Elf | Gnome deriving (Eq)
+
+instance Show Species where
+  show Gnome = "G"
+  show Elf = "E"
+
+other :: Species -> Species
+other s = if s == Gnome then Elf else Gnome
 
 dedup :: (Eq a) =>  [a] -> [a]
 dedup [] = []
@@ -53,16 +61,25 @@ beastAt ((p,b,_):bs) pos | p == pos = b
 -- scanField :: Field -> Pos -> [(Int,Pos)]
 -- scanField field pos = 
 
+adjacent = [(-1,0),(0,-1),(0,1),(1,0)] :: [(Int,Int)]
+
+-- chooseStep :: Field -> [Beast] -> Beast -> [Pos]
+-- chooseStep field beasts beast@((r,c),b,_) | tgts == [] = []
+  --                             | otherwise = head ( [ (y+r,x+c) | (x,y) <= adjacent, 
+    --                             where tgts = getTargets field (r,c) b 
+
 neighborList :: Field -> [Beast] -> [(Pos,Int,Char)] -> [(Pos,Int,Char)] -> [(Pos,Int,Char)]
 neighborList field beasts neighbors fresh | nList == [] = newNeighbors
                                           | otherwise = neighborList field beasts newNeighbors nList
                                                       where 
                                                         newNeighbors = neighbors ++ fresh
-                                                        nList = dedup [((y+r,x+c),dist+1, beastAt beasts (y+r,x+c) ) | (y,x) <- [(-1,0),(0,-1),(0,1),(1,0)],
+                                                        nList = dedup [((y+r,x+c),dist+1, beastAt beasts (y+r,x+c) ) | (y,x) <- adjacent,
                                                                        ((r,c),dist,_) <- fresh,
                                                                        field ! (y+r,x+c) == '.',
                                                                        beastAt beasts (r,c) == ' ',
                                                                        not ((y+r,x+c) `elem` (map (\(a,b,c) -> a) newNeighbors)) ] -- how to start from beast position?!
+
+
 
 showDistance :: Field -> Pos -> [Beast] -> [(Pos,Int,Char)] -> String
 showDistance field pos beasts neighbors | field ! pos == '.' && (beastAt beasts pos) == ' ' = dist
