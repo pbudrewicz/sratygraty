@@ -7,7 +7,7 @@ type Field = Array (Int, Int) Char
 data Species = Ghost | Elf | Gnome deriving (Eq, Ord)
 type Distance = Int
 type HitPoints = Int
-type Beast = (Pos, (Species, HitPoints))
+type Beast = (Pos, (Species, HitPoints)) -- I'm afraid we need uniq IDs for beasts
 type MapElement = (Pos, (Distance, Species))
 
 instance Show Species where
@@ -18,7 +18,7 @@ instance Show Species where
 other :: Species -> Species
 other s |  s == Gnome = Elf 
         |  s == Elf = Gnome
-        |  otherwise = Ghost
+        |  otherwise = s
 
 alive :: Species -> Bool
 alive s = s == Elf || s == Gnome
@@ -33,8 +33,8 @@ dedup [] = []
 dedup (x:xs) | x `elem` xs = dedup xs
              | otherwise = x:(dedup xs)
 
-cleanMap :: Char -> Char
-cleanMap c | c == 'G' = '.'
+removeBeasts :: Char -> Char
+removeBeasts c | c == 'G' = '.'
            | c == 'E' = '.'
            | otherwise = c
 
@@ -71,12 +71,20 @@ beastAt [] _ = Ghost
 beastAt ((p,(b,_)):bs) pos | p == pos = b
                            | otherwise = beastAt bs pos
 
-maybeMove :: Field -> [Beast] -> Beast -> Beast
-maybeMove field beasts beast@(pos,(b,l)) | nextMove == [] = beast  
-                                         | tgts /= [] && isInRange (fst (head tgts)) pos = beast
-                                         | otherwise = ((head nextMove),(b,l))
-                                             where tgts = getTargets field beasts pos (other b) 
+allBut :: [Beast] -> Beast -> [Beast]
+allBut [] _ = []
+allBut (b:bs) beast | b == beast = bs
+                    | otherwise = b:(allBut bs beast)
+
+maybeMove :: Field -> [Beast] -> Beast -> [Beast]
+maybeMove field beasts beast@(pos,(species,l)) | nextMove == [] = beasts
+                                         | tgts /= [] && isInRange (fst (head tgts)) pos = beasts
+                                         | otherwise = ((head nextMove),(species,l)):(allBut beasts beast)
+                                             where tgts = getTargets field beasts pos (other species) 
                                                    nextMove = chooseStep field beasts beast tgts
+
+maybeAttack :: Field -> [Beast] -> Beast -> [Beast]
+maybeAttack field beasts beast = beasts
 
 -- scanField :: Field -> Pos -> [(Int,Pos)]
 -- scanField field pos = 
@@ -127,9 +135,9 @@ main = do
       beasts = sort [ ((y,x),(specie(myarray ! (y,x)),200))| y <-[0..rows], x<-[0..cols], alive(specie(myarray ! (y,x)))] 
 --      gnomes = sort [ ((x,y),3)| x <-[0..cols], y<-[0..rows], (myarray ! (x,y)) == 'G' ] 
 --      elves = sort [ ((x,y),3)| x <-[0..cols], y<-[0..rows], (myarray ! (x,y)) == 'E' ] 
-      field = array((0,0),(rows, cols)) [((y,x), (cleanMap (myarray ! (y,x)))) | y<-[0..rows], x<-[0..cols] ] 
+      field = array((0,0),(rows, cols)) [((y,x), (removeBeasts (myarray ! (y,x)))) | y<-[0..rows], x<-[0..cols] ] 
 --      neighbors = (neighborList field beasts  ((9,21),0,Ghost) )
-      in putStrLn (unlines ((showField (field,(rows,cols)) beasts) ++ (map ( \b -> (show  (maybeMove field beasts b ))) beasts) ++ (showField (field,  (rows, cols)) (map ( \b -> maybeMove field beasts b ) beasts))))
+      in putStrLn (unlines ((showField (field,(rows,cols)) beasts) ++ (map ( \b -> (show  (maybeMove field beasts b ))) beasts) ++ (showField (field,  (rows, cols)) (foldl ( \beasts beast -> maybeMove field beasts beast) beasts beasts))))
 --      in putStrLn (unlines ( [ foldl  (\acc c -> acc ++ (showDistance field (r,c) beasts neighbors)) "" [0..cols]  | r <- [0..rows] ] ))
 --      in putStrLn (show ( getTargets field beasts (9,25) 'E'))
 --       in putStrLn (show (map (\(pos,b,_) -> getTargets field beasts pos (other b)) beasts))
