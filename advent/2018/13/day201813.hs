@@ -52,20 +52,12 @@ moveTrains tracks tick moved (t@(pos,_,_):ts) | crash tm (moved ++ ts) = moveTra
 
 crash :: Train -> [Train] -> Bool
 crash _ [] = False
--- crash (_,'#',_) _ = False
--- crash train ((_,'#',_):ts) = crash train ts
 crash train@((x1,y1),_,_) (((x2,y2),_,_):ts) = (x1 == x2 && y1 == y2) || crash train ts
 
 removeCrashed :: (Int,Int) -> [Train] -> [Train]
 removeCrashed _ [] = []
 removeCrashed pos@(x,y) (t@((tx,ty),_,_):ts) | (x == tx && y == ty) = removeCrashed pos ts
                                              | otherwise = t:(removeCrashed pos ts)
-
--- crashPos :: [Train] -> (Int,Int) 
--- crashPos [] = (-1,-1)
--- crashPos ((pos,'#',_):ts) = pos
--- crashPos (_:ts) = crashPos ts
-
 main = do
   input <- getContents
   let rows = (length (lines input)) - 1
