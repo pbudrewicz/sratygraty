@@ -47,12 +47,12 @@ isInRange (y1,x1) (y2,x2) = (abs (x1 - x2) == 1 && y1 == y2 ) || (x1 == x2 && ab
 
 
 
-showMapElement :: Field -> Pos  -> [Beast] -> String
-showMapElement field pos beasts | beast == [] = [field ! pos]
-                                | otherwise = showBeast (head beast)
+showMapElement :: Field -> Pos  -> [Beast] -> String -- draw field or occupying beast
+showMapElement field pos beasts | beast == [] = [field ! pos] -- no beast on pos, show field
+                                | otherwise = showBeast (head beast) -- draw beast
                                     where beast = filter (\b -> pos == (fst b)) beasts
 
-showBeast :: Beast -> String
+showBeast :: Beast -> String -- show beasst in proper color
 showBeast (pos,(b,l)) | l == 200 = "\27[32m" ++ show b ++ "\27[0m"
                       | l > 150  = "\27[36m" ++ show b ++ "\27[0m"
                       | l > 100  = "\27[34m" ++ show b ++ "\27[0m"
@@ -83,8 +83,11 @@ maybeMove field beasts beast@(pos,(species,l)) | nextMove == [] = beasts
                                              where tgts = getTargets field beasts pos (other species) 
                                                    nextMove = chooseStep field beasts beast tgts
 
-maybeAttack :: Field -> [Beast] -> Beast -> [Beast]
-maybeAttack field beasts beast = beasts
+maybeAttack :: Field -> [Beast] -> [Beast] -> Beast -> [Beast]
+maybeAttack field still_alive beasts beast = beasts
+
+removeDead :: [Beast] -> [Beast]
+removeDead = filter (\(_, (_,l)) -> l > 0)
 
 -- scanField :: Field -> Pos -> [(Int,Pos)]
 -- scanField field pos = 
