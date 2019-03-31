@@ -66,6 +66,8 @@ draw_text_string () {
 
 echo Generating slideshow...
 echo
+# we get directories actually containing photos (take dirs of actual photos)
+# and select up to PERDIR photos from each and take first COUNT from it.
 NUM=1
 find posprzatane/dobre/ WIP* -iname '*.jpg' -exec dirname {} \; | tee /tmp/cnt.file | 
     pv -N 'list generation' -peabrl $prev_size | sort -u | sort -R | while read directory ; do
@@ -76,6 +78,7 @@ find posprzatane/dobre/ WIP* -iname '*.jpg' -exec dirname {} \; | tee /tmp/cnt.f
 	done
 done | head -$COUNT > $LISTFILE
 wc -l < /tmp/cnt.file > $SDIR/prev.cnt ; rm /tmp/cnt.file
+# we take each photo from list, resize and impose comment on ot
 NUM=1
 cat $LISTFILE |
     while read num photo ; do
