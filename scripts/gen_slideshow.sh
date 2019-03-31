@@ -5,6 +5,7 @@ PDIR=/usb/photo
 SDIR=/var/lib/minidlna/photo/slides
 COUNT=1000
 DIRCNT=100
+PERDIR=7
 LISTFILE=/tmp/photo$$.lst
 
 mount /usb
@@ -66,17 +67,17 @@ draw_text_string () {
 echo Generating slideshow...
 echo
 NUM=1
-find posprzatane/dobre/ WIP* -iname '*jpg'  |
-    while read photo ; do
-	echo $NUM $photo
-	NUM=$(( $NUM + 1 ))
-    done |
-    pv -N 'list generation' -peabrl $prev_size > $LISTFILE
-wc -l < $LISTFILE > $SDIR/prev.cnt
+find posprzatane/dobre/ WIP* -iname '*.jpg' -exec dirname {} \; | tee /tmp/cnt.file | 
+    pv -N 'list generation' -peabrl $prev_size | sort -u | sort -R | while read directory ; do
+    ls "$directory"/*.[jJ][pP][gG] | sort -R | head -$PERDIR | sort |
+	while read photo ; do
+	    echo $NUM $photo
+	    NUM=$(( $NUM + 1 ))
+	done
+done | head -$COUNT > $LISTFILE
+wc -l < /tmp/cnt.file > $SDIR/prev.cnt ; rm /tmp/cnt.file
 NUM=1
 cat $LISTFILE |
-    sort -R | 
-    head -$COUNT | 
     while read num photo ; do
 	num=$NUM ; NUM=$(( $NUM + 1 )) # <-this very line makes slideshow random instead of chronological
 	COMMENT=$( mkcomment "$photo" )
