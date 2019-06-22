@@ -46,7 +46,6 @@ isInRange (y1,x1) (y2,x2) = (abs (x1 - x2) == 1 && y1 == y2 ) || (x1 == x2 && ab
 --                                 where afterTurn = (maybeAttack (maybeMove field u) u)
 
 
-
 showMapElement :: Field -> Pos  -> [Beast] -> String
 showMapElement field pos beasts | beast == [] = [field ! pos]
                                 | otherwise = showBeast (head beast)
@@ -85,6 +84,8 @@ maybeMove field beasts beast@(pos,(species,l)) | nextMove == [] = beasts
 
 maybeAttack :: Field -> [Beast] -> Beast -> [Beast]
 maybeAttack field beasts beast = beasts
+
+
 
 -- scanField :: Field -> Pos -> [(Int,Pos)]
 -- scanField field pos = 
