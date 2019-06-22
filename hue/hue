@@ -976,7 +976,7 @@ set_bulb_color () { # this is Internal procedure not accessible
             fi
 	    COLOR=$( K_2_xy T$1 )
 	    FAKE_t="T $1"
-	    set_xy $COLOR $2
+	    set_xy $COLOR $2 ${1}K
 	    ;;
         *)
             COLOR=$( describe_color $schema )
