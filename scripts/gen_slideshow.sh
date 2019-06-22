@@ -6,6 +6,7 @@ SDIR=/var/lib/minidlna/photo/slides
 COUNT=1000
 DIRCNT=100
 PERDIR=7
+DIRLIST=/tmp/dirs$$.lst
 LISTFILE=/tmp/photo$$.lst
 
 mount /usb
@@ -26,6 +27,20 @@ if [ -d $SDIR ] ; then
 else
     mkdir $SDIR
 fi
+
+select_dirs () {
+    DIRFILE=/tmp/cnt$$.file
+    find $@ -iname '*.jpg'  | perl -ple 's|/[^/]+$||'  |
+	pv -N 'dir list generation' -peabrl $prev_size > $DIRFILE
+    < $DIRFILE wc -l > $SDIR/prev.cnt 
+    while [ -s $DIRFILE ] ; do
+	#	wc -l $DIRFILE >&2
+	NEXTDIR="$( < $DIRFILE sort -R|head -1 )"
+	< $DIRFILE grep -v "$NEXTDIR" | sponge $DIRFILE
+	echo "$NEXTDIR"
+    done
+    rm $DIRFILE
+}
 
 mkcomment () {
 	photo="$1"
@@ -69,18 +84,16 @@ echo
 # we get directories actually containing photos (take dirs of actual photos)
 # and select up to PERDIR photos from each and take first COUNT from it.
 NUM=1
-find posprzatane/dobre/ WIP* -iname '*.jpg' -exec dirname {} \; | tee /tmp/cnt.file | 
-    pv -N 'list generation' -peabrl $prev_size | sort -u | sort -R | while read directory ; do
+select_dirs  posprzatane/dobre/ WIP* | while read directory ; do
     ls "$directory"/*.[jJ][pP][gG] | sort -R | head -$PERDIR | sort |
 	while read photo ; do
 	    echo $NUM $photo
 	    NUM=$(( $NUM + 1 ))
 	done
-done | head -$COUNT > $LISTFILE
-wc -l < /tmp/cnt.file > $SDIR/prev.cnt ; rm /tmp/cnt.file
-# we take each photo from list, resize and impose comment on ot
-NUM=1
-cat $LISTFILE |
+done | head -$COUNT | #pv -N 'photo list generation' -peabrl -$COUNT > $LISTFILE
+    #NUM=1
+    # we take each photo from list, resize and impose comment on ot
+    # cat $LISTFILE |
     while read num photo ; do
 	num=$NUM ; NUM=$(( $NUM + 1 )) # <-this very line makes slideshow random instead of chronological
 	COMMENT=$( mkcomment "$photo" )
