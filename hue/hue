@@ -2,7 +2,8 @@
 
 ### author: p.budrewicz
 
-. $( dirname $0 )/user.key 
+. $( dirname $0 )/user.key
+. $( dirname $0 )/bridge.ip
 . $( dirname $0 )/colors.env
  
 VERBOSE=0
@@ -90,7 +91,11 @@ scan_net () {
 
 discover_bridge () {
     bridge_url=$(scan_net)
-    echo bridge_url=$bridge_url
+    while ! echo $bridge_url | grep -q http ; do 
+	    bridge_url=$(scan_net)
+	    echo -n . >&2
+    done
+    echo bridge_url=$bridge_url | tee $( dirname $0 )/bridge.ip
 }
 
 unjson () {
@@ -312,7 +317,7 @@ $0 alert - blink mode on
     mandatory_lights
     set_light on 
     feedback alert on light $light
-    polite_curl -s -X PUT -d '{"alert":"select"}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    polite_curl -s -X PUT -d '{"alert":"select"}' $bridge_url/api/$user_key/lights/$light/state 
 }
 
 time_2_sec () {
@@ -547,7 +552,7 @@ color_loop () {
     fi
 
     for light; do
-        polite_curl -s -X PUT -d '{"effect":"'$effect'"}' http://$bridge_ip/api/$user_key/lights/$light/state 
+        polite_curl -s -X PUT -d '{"effect":"'$effect'"}' $bridge_url/api/$user_key/lights/$light/state 
     done
 }
 
@@ -741,16 +746,16 @@ get_brightness () {
 
 
 get_config_json () { 
-    curl -s -X GET  http://$bridge_ip/api/$user_key/config
+    curl -s -X GET  $bridge_url/api/$user_key/config
 }
 
 
 get_lights_json () { 
 
     if [ "$1" != "" ] ; then
-        curl -s -X GET  http://$bridge_ip/api/$user_key/lights/$1
+        curl -s -X GET  $bridge_url/api/$user_key/lights/$1
     else
-        curl -s -X GET  http://$bridge_ip/api/$user_key/lights
+        curl -s -X GET  $bridge_url/api/$user_key/lights
     fi
     
 }
@@ -792,12 +797,12 @@ hue light on|off
         on)
             mandatory_lights
             feedback setting light $light on
-            polite_curl -s -X PUT -d '{"on":true}' http://$bridge_ip/api/$user_key/lights/$light/state 
+            polite_curl -s -X PUT -d '{"on":true}' $bridge_url/api/$user_key/lights/$light/state 
             ;;
         off)
             mandatory_lights
             feedback setting light $light off
-            polite_curl -s -X PUT -d '{"on":false}' http://$bridge_ip/api/$user_key/lights/$light/state 
+            polite_curl -s -X PUT -d '{"on":false}' $bridge_url/api/$user_key/lights/$light/state 
             ;;
         *)
             show_help 1 bad light status $ONOFF 
@@ -833,7 +838,7 @@ hue set brightness {brightness:1-254} - setting brightnes
     mandatory_lights
     feedback setting brightness of light $light to $BRIGHTNESS    
     FAKE_bri=$BRIGHTNESS
-    polite_curl -s -X PUT -d '{"bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    polite_curl -s -X PUT -d '{"bri":'$BRIGHTNESS'}' $bridge_url/api/$user_key/lights/$light/state 
 }
 
 set_hue () {
@@ -853,7 +858,7 @@ hue [set] color hue {hue:0-65535} {saturation:1-254} {brightness:1-254}
 	esac
     fi    
     feedback setting hue to "$@"
-    polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$2',"bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state     
+    polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$2',"bri":'$BRIGHTNESS'}' $bridge_url/api/$user_key/lights/$light/state     
 }
 
 set_xy () {
@@ -875,7 +880,7 @@ CIE set color xy {x} {y} {brightness:1-254}
     mandatory_lights
     
     feedback setting CIE color of light $light to "$@" 
-    polite_curl -s -X PUT -d '{"on":true, "xy":['$1', '$2'], "bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    polite_curl -s -X PUT -d '{"on":true, "xy":['$1', '$2'], "bri":'$BRIGHTNESS'}' $bridge_url/api/$user_key/lights/$light/state 
 }
 
 set_ct () {
@@ -895,7 +900,7 @@ hue set color ct  {mirek:153-500} {brightness:1-254}
     fi    
     mandatory_lights
     feedback setting light $light to  mirek "$@"
-    polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$BRIGHTNESS'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+    polite_curl -s -X PUT -d '{"on":true, "ct":'$1', "bri":'$BRIGHTNESS'}' $bridge_url/api/$user_key/lights/$light/state 
 }
     
 set_color () { 
@@ -1002,7 +1007,7 @@ hue set saturation {saturation:1-254} - setting saturation
     mandatory_lights
     feedback setting saturation to "$@" 
     for light ; do
-        polite_curl -s -X PUT -d '{"sat":'$v'}' http://$bridge_ip/api/$user_key/lights/$light/state 
+        polite_curl -s -X PUT -d '{"sat":'$v'}' $bridge_url/api/$user_key/lights/$light/state 
     done
 }
 
