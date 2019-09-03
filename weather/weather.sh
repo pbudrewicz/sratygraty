@@ -27,7 +27,7 @@ Usage:
     exit $1
 }
 
-LOCATION="Warsaw,PL"
+LOCATION="Legionowo,PL"
 DATA_TYPE="weather"
 SHOW_TYPE="weather"
 SILENT=""
@@ -120,7 +120,7 @@ show_condition () {
         Rain)
             sleep 1
             feedback ...raining...
-            hue -l $light pulse xy $BLUE_COLOR 100 -p 0.5 $VERBOSITY
+            hue -l $light pulse xy $BLUE_COLOR 100 -p 1 $VERBOSITY
             ;;
         Snow)
 	    sleep 1
@@ -130,7 +130,7 @@ show_condition () {
         Clouds)
 	    sleep 1
 	    feedback ...clouds...
-	    hue -l $light pulse xy $VIOLET_COLOR 1 -p 0.5  $VERBOSITY
+	    hue -l $light pulse xy $VIOLET_COLOR 100 -p 1 $VERBOSITY
 	    ;;
         Mist)
 	    sleep 1
