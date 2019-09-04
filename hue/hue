@@ -82,7 +82,7 @@ scan_net () {
     #     feedback -n .
     gssdp-discover -n 5 | grep Location: | while  read loc url ; do
 	if curl -s $url | grep -qi "Philips hue bridge" ; then
-	    echo $url |sed s/description.xml//
+	    echo $url |sed s/.description.xml//
 	    return 0;
 	fi 
     done
@@ -93,7 +93,7 @@ discover_bridge () {
     bridge_url=$(scan_net)
     while ! echo $bridge_url | grep -q http ; do 
 	    bridge_url=$(scan_net)
-	    echo -n . >&2
+	    feedback -n .
     done
     echo bridge_url=$bridge_url | tee $( dirname $0 )/bridge.ip
 }
