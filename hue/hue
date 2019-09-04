@@ -256,7 +256,7 @@ K_2_xy () {
         HIGH=$( calc %d "(1 + int($T / 500)) * 500" )
     fi
     
-    HIGH_COLOR=$( export T$HIGH ; sh -c "echo \$T$HIGH" ) # the trick is to show value of variable with calculated name, as  ${T$T} does not work
+    HIGH_COLOR=$( export T$HIGH ; sh -c "echo \$T$HIGH" ) # the trick is to show value of variable with calculated name, as  ${T$T} does not work # TODO: check nameref variable attribute
     LOW_COLOR=$( export T$LOW ; sh -c "echo \$T$LOW" )
 
     echo $( interpolate $(( $HIGH - $LOW )) pair $LOW_COLOR $HIGH_COLOR $(( $T - $LOW )) )
