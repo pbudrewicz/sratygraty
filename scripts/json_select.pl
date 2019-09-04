@@ -8,7 +8,9 @@ sub json2struct {
 	&usage;
 	exit 0;
     }
+    undef $/;
     $json = <STDIN>;
+    $json =~ s/\s/ /gm;
     $structure  = decode_json($json);
 }
 
@@ -43,7 +45,7 @@ if ( $ARGV[0] eq "dump" ) {
 sub usage {
     print <<"EOF";
 
-  Usage: $0 (get|list|keys|count|size|show) selector
+  Usage: $0 (get|list|keys|count|size|show|dump) selector
 
       list|keys   -- list keys in HASH
       count|size  -- show count of elements in ARRAY
@@ -51,7 +53,7 @@ sub usage {
       get         -- get just the field value
       
       selector    -- valid datastructure selector, perl syntax
-                  e.g. '{mambers}[3]{gender}' OR '' for root node. 
+                  e.g. '{members}[3]{gender}' OR '' for root node. 
 EOF
 
 }
