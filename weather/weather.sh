@@ -30,6 +30,7 @@ Usage:
 LOCATION="Legionowo,PL"
 DATA_TYPE="weather"
 SHOW_TYPE="weather"
+STRONG_WIND_SPEED=10.00
 SILENT=""
 ID=756135
 BRIGHTNESS=250
@@ -127,9 +128,9 @@ show_condition () {
 	    feedback ...snowing...
 	    hue -l $light pulse xy $WHITE_COLOR 200 -p 0.5 $VERBOSITY
             ;;
-        Clouds)
+        Wind)
 	    sleep 1
-	    feedback ...clouds...
+	    feedback ...wind...
 	    hue -l $light pulse xy $VIOLET_COLOR 100 -p 1 $VERBOSITY
 	    ;;
         Mist)
@@ -182,6 +183,12 @@ forecast_show () {
             feedback $date $condition
             show_condition $condition
         done
+        wind_speed=$( weather get "{list}[$i]{wind}{speed}" )
+	if [ "$( echo "$wind_speed > $STRONG_WIND_SPEED"|bc)" = "1" ] ; then
+	    condition=Wind
+            feedback $date $condition $wind_speed
+            show_condition $condition
+	fi
         #hue -l 3 alert 
         #    sleep 1
         if [ "$( echo "$T > $MAX_TEMP"|bc)" = "1" ] ; then
