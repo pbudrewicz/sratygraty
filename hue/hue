@@ -273,7 +273,7 @@ maybe_give_up () {
 
     if ! is_light_on $light ; then
         feedback User turned the light $light off - giving up
-        set_color hue 45000 200 254
+        set_color hue 45000 200 5
         set_light off         
         exit 0
     fi
@@ -723,12 +723,12 @@ get_color () { # one light only - passed as parameter
 	    hue=$( echo $L | unjson '{state}{hue}' )
 	    sat=$( echo $L | unjson '{state}{sat}' )
 	    bri=$( echo $L | unjson '{state}{bri}' )
-	    echo hue $hue $sat $bri 
+	    echo hue $hue $sat $bri $( if ! is_light_on $1; then echo "# off" ; fi )
 	    ;;
 	ct)
 	    ct=$( echo $L | unjson '{state}{ct}' )
 	    bri=$( echo $L | unjson '{state}{bri}' )
-	    echo ct $ct $bri
+	    echo ct $ct $bri $( if ! is_light_on $1; then echo "# off" ; fi )
             ;;
         *)
             show_help 1 bad color schema $color_type
