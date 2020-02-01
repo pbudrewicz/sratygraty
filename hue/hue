@@ -26,6 +26,7 @@ GREEN_CORNER="0.17 0.7"
 BLUE_CORNER="0.1532 0.0475"
 
 FAKE_bri=111
+FAKE_mode=xy
 FAKE_ct="ct 200 111"
 FAKE_xy="xy $RED_CORNER 111"
 FAKE_hue="hue 45000 150 111"
@@ -744,6 +745,14 @@ get_brightness () {
     echo $( get_lights_json $1 | unjson '{state}{bri}' )
 }
 
+get_mode () { 
+    if [ "$DRY" = "1" ] ; then
+        echo $FAKE_mode
+        return
+    fi
+    echo $( get_lights_json $1 | unjson '{state}{colormode}' )
+}
+
 
 get_config_json () { 
     curl -s -X GET  $bridge_url/api/$user_key/config
@@ -1133,6 +1142,7 @@ hue get
 	    get_color $1
             ;;
         mode)
+	    get_mode $1
             ;;
         *)
             show_help 1 unknown query: $*
