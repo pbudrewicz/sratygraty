@@ -51,7 +51,7 @@ insertMap x y id amap = replace y row amap where
 addRegToMap :: Map -> RegDef -> Map
 addRegToMap amap (id,left,top,width,height) = foldl (\m (x,y) -> insertMap x y id m) amap [ (a,b) | a <- [(left+1) .. (left+width)], b <- [(top+1) .. (top + height)] ]
 
-emptyMap = (replicate 1000 ( replicate 1000 [] ) )
+emptyMap = replicate 1000 $ replicate 1000 [] 
 
 calcMulti :: Map -> Int
 calcMulti m = foldl (\cnt r -> cnt + foldl (\a c -> if length c > 1 then a+1 else a) 0 r) 0 m
@@ -62,7 +62,7 @@ main = do
   input <- getContents
   let myinput = map words (lines input)
       mydefs  = map readRegDef myinput in
-      putStrLn (show (findNonOverlapping [1..1381] (getMulti mydefs)))
+      putStrLn $ show $ findNonOverlapping [1..1381] (getMulti mydefs)
 --      putStrLn (show (countMulti mydefs))
 --      amap = (foldl addRegToMap emptyMap (map readRegDef (map words (lines input)))) in 
         --putStrLn (show (calcMulti amap))

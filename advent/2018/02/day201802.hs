@@ -49,5 +49,5 @@ findPair (x:rest) |  res == [] = findPair rest
 
 main = do
   input <- getContents
-  putStrLn ( show ( countCksum (countCodes (0,0) (map (qualifyStr ([], [], [], [])) (words input)))))
-  putStrLn ( show ( findPair (words input)))
+  putStrLn $ show $ countCksum $ countCodes (0,0) $  map (qualifyStr ([], [], [], [])) (words input) 
+  putStrLn $ show $ findPair $ words input
