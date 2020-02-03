@@ -16,30 +16,36 @@ sub json2struct {
 
 &json2struct;
 
-if ( $ARGV[1] eq "" ) {
-    $query = "";
-} else {
-    $query = "->$ARGV[1]";
-}
+while( $ARGV[0] ne "" ) {
 
-if ( $ARGV[0] eq "dump" ) {
-    $Data::Dumper::Sortkeys=1;
-    print Dumper($structure);
-} elsif ($ARGV[0] eq "list" || $ARGV[0] eq "keys") {
-    eval ("print( join (\"\n\", sort keys( %{ \$structure" . $query . " } )), \"\\n\");");
-} elsif ($ARGV[0] eq "count" || $ARGV[0] eq "size") {
-    eval ("print( scalar( \@{ \$structure" . $query . " } ), \"\\n\");");
-} elsif ($ARGV[0] eq "show")  {
-    eval ("\$out=  \$structure" . $query . ";");    
-    print "$out\n";
-    eval ("print( scalar( \@{ \$structure" . $query . " } ), \"\\n\");") 
-	if $out =~ m/^ARRAY/;
-    eval ("print( join (\"\n\", sort keys( %{ \$structure" . $query . " } )), \"\\n\");") 
-	if $out =~m/^HASH/;
-} elsif ($ARGV[0] eq "get")  {
-    eval ("print \$structure" . $query . ";");    
-} else {
-    &usage;
+    if ( $ARGV[1] eq "" ) {
+        $query = "";
+    } else {
+        $query = "->$ARGV[1]";
+    }
+
+    if ( $ARGV[0] eq "dump" ) {
+        $Data::Dumper::Sortkeys=1;
+        print Dumper($structure);
+    } elsif ($ARGV[0] eq "list" || $ARGV[0] eq "keys") {
+        eval ("print( join (\"\n\", sort keys( %{ \$structure" . $query . " } )), \"\\n\");");
+    } elsif ($ARGV[0] eq "count" || $ARGV[0] eq "size") {
+        eval ("print( scalar( \@{ \$structure" . $query . " } ), \"\\n\");");
+    } elsif ($ARGV[0] eq "show")  {
+        eval ("\$out=  \$structure" . $query . ";");    
+        print "$out\n";
+        eval ("print( scalar( \@{ \$structure" . $query . " } ), \"\\n\");") 
+            if $out =~ m/^ARRAY/;
+        eval ("print( join (\"\n\", sort keys( %{ \$structure" . $query . " } )), \"\\n\");") 
+            if $out =~m/^HASH/;
+    } elsif ($ARGV[0] eq "get")  {
+        eval ("print \$structure" . $query . ";");    
+    } else {
+        &usage;
+    }
+
+    shift @ARGV;
+    shift @ARGV;
 }
 
 sub usage {
@@ -58,5 +64,5 @@ EOF
 
 }
 
-    
+
 
