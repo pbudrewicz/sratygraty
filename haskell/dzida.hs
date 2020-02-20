@@ -1,5 +1,6 @@
 
 import System.Environment
+import Data.Char
 
 data Dzida = Przed | Srod | Za deriving (Show)
 
@@ -32,12 +33,16 @@ dzida :: Int -> [[String]] -- handle enumerated recursion for expansion of abstr
 dzida 0 = [[]]
 dzida l = unroll ( dzida  ( l-1 ) )
 
+capitalize :: String -> String
+capitalize (x:xs) = (toUpper x):xs
+
 name_dzida :: Int -> String -- get name of dzida's parts expanded number of times as a description string
-name_dzida l = join ".\n" (map (\x -> (nominative x) ++ " sklada sie z " ++ join ", " (map (genitive) (unroll  [x]))) (dzida l)) ++ ".\n"
+name_dzida l = join ".\n" (map (\x -> ((capitalize . nominative) x) ++ " sklada sie z " ++ join ", " (map (genitive) (unroll  [x]))) (dzida l)) ++ ".\n"
 
 -- describe :: [String] -> String -- describe dzida up to x levels (or infinite when empty)
 -- describe [] =  concat ( map (\l -> name_dzida l ++ "\n" ) [0..] )
 -- describe (x:xs)  = concat ( map (\l -> name_dzida l ++ "\n" ) [0..(read x)] )
+
 
 describe :: [String] -> String -- describe dzida up to x levels (or infinite when empty)
 describe a | a == [] =  concat  infinite_description
