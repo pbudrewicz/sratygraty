@@ -60,7 +60,7 @@ LINEAR_SUNRISE="0.68 0.3 1
 # TODO: add support to setting color of celsius temperature and remove it from weather.sh
 # TODO: conversion ct -> xy and maybe xy -> ct.
 
-TEMP=$( getopt -o b:d::ehk:l:op:Prs:v:: --long bridge:,dry::,exp,help,key:,light:,off,period:,persist,responses,steps:,verbose:: -n $0 -- "$@" )
+TEMP=$( getopt -o b:cd::ehk:l:op:Prs:v:: --long bridge:,check,dry::,exp,help,key:,light:,off,period:,persist,responses,steps:,verbose:: -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -453,9 +453,14 @@ $0 pulse COLOR - switch to COLOR for a moment
     maybe_help_needed "$@"
     mandatory_lights
     SAVED_COLOR=$( get_color $light )
+    ONOFF_STATUS=$( get_on_off $light )
     set_bulb_color $light "$@"
-    sleep $SLEEP;  
-    set_bulb_color $light $SAVED_COLOR
+    sleep $SLEEP;
+    if [ "$ONOFF_STATUS" = "1" ] ; then
+	set_bulb_color $light $SAVED_COLOR
+    else
+	set_light off $light
+    fi
 }
 
 clone_light () {
@@ -950,6 +955,9 @@ describe_color () { # returns xy values for named color
         green)
             COLOR=$GREEN_COLOR
             ;;
+        cyan)
+            COLOR=$CYAN_COLOR
+            ;;
         blue)
             COLOR=$BLUE_COLOR
             ;;
@@ -1153,9 +1161,10 @@ hue get
 
 HELPTEXT="
 Usage: 
-  hue [-b bridge_ip][-d[schema]][-e][-h][-k user_key][[-l number] ... ][-o][-p period][-r][-s steps][[-v[level]] ... ] command
+  hue [-b bridge_ip][-c][-d[schema]][-e][-h][-k user_key][[-l number] ... ][-o][-p period][-r][-s steps][[-v[level]] ... ] command
     Options are:
       -b|--bridge_ip   -- IP address of the hue bridge device
+      -c|--check       -- check if bridge data is actual and update if not
       -d|--dry[schema] -- dry run, do not bother the bridge (fake response with schema)
       -e|--exp         -- exponential brightness changes in sequencess or transitions
       -h|--help        -- this help
@@ -1242,6 +1251,12 @@ while true ; do
     case "$1" in
         -b|--bridge)
             bridge_ip="$2"; shift 2;;
+	-c|--check)
+	    if ! get_config_json > /dev/null ; then
+		discover_bridge
+	    fi
+	    shift
+	    ;;
         -d|--dry)
             DRY=1; 
             if [ "$2" != "" ] ; then
