@@ -10,7 +10,7 @@ DAYLIGHT_COLOR[2]='ct 155 254'           # switch
 DAYLIGHT_COLOR[3]='ct 153 254'           # t 6500
 
 if [ "$VERBOSE" = "" ] ; then
-	VERBOSE=1
+	VERBOSE=0
 fi
 
 
@@ -82,7 +82,8 @@ already_running () {
 }
 
 run_dusk () {
-  [ "$VERBOSE" = "1" ] && echo starting dusk for light $THE_LIGHT
+ # [ "$VERBOSE" = "1" ] && 
+  echo starting dusk for light $THE_LIGHT
   date +%s > $LAST_RUN_FILE
   hue -c -l $THE_LIGHT transit from ct 153 $BRIGHTNESS ct 345 $BRIGHTNESS -p 10 -s 720
   rm $LAST_RUN_FILE
