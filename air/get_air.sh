@@ -61,7 +61,7 @@ level_to_color () {
 		2)
 			echo green;;
 		3)
-			echo orange;;
+			echo yellow;;
 		4)
 			echo red;;
 		*)
@@ -73,6 +73,7 @@ MAX_LEVEL=0
 for val in $( seq 0 $(( $VALUES - 1 )) ) ; do
     NAME[$val]=$( echo $AIR_JSON | $DIR/../scripts/json_select.pl get "{current}{values}[$val]{name}" )
     VALUE[$val]=$( echo $AIR_JSON | $DIR/../scripts/json_select.pl get "{current}{values}[$val]{value}"|sed 's/\.[0-9]*//g' )
+    echo -n "${NAME[$val]}=${VALUE[$val]} "
     if [ "${NAME[$val]}" = "PM10" ] ; then
 	    MAX_LEVEL=$( max "$MAX_LEVEL" $( pm10_level "${VALUE[$val]}" ) )  
     elif [ "${NAME[$val]}" = "PM25" ] ; then
@@ -81,10 +82,11 @@ for val in $( seq 0 $(( $VALUES - 1 )) ) ; do
 	    MAX_LEVEL=$( max "$MAX_LEVEL" $( pmnon10_level "${VALUE[$val]}" ) )  
     fi 
 done
-echo LEVEL:$MAX_LEVEL
+echo
+#echo LEVEL:$MAX_LEVEL
 OVERALL_COLOR=$( level_to_color $MAX_LEVEL )
-$DIR/../hue/hue -l $LIGHT pulse $OVERALL_COLOR 254 
-$DIR/../hue/hue -l $LIGHT pulse $OVERALL_COLOR 254 
-$DIR/../hue/hue -l $LIGHT pulse $OVERALL_COLOR 254 
+for i in $( seq 1 $MAX_LEVEL ) ; do 
+  $DIR/../hue/hue -l $LIGHT pulse $OVERALL_COLOR 254 
+done
 
 # curl -X --header 'Accept: application/json' --header 'Accpet-Language: en' --header "apikey: $user_key" "http://api.gios.gov.pl/pjp-api/rest/data/getData/6168"|json_pp
