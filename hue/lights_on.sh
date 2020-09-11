@@ -8,7 +8,7 @@ if [ "$1" = "" ] ; then
 fi
 
 
-. $( dirname $0 )/user.key 
+. $HOME/etc/user.key 
 
 
 for light do

@@ -43,8 +43,9 @@ PATH=$PATH:~/sratygraty/scripts:~/sratygraty/hue:~/sratygraty/weather
 DATA_CACHE=/tmp/weather_fun_info.dat
 DIR=$( dirname $0 )
 
-. $DIR/../hue/colors.env
-. $DIR/weather.key
+. $HOME/etc/colors.env
+. $HOME/etc/weather.key
+. $HOME/etc/location_data
 
 feedback () {
     if [ "$VERBOSE" -gt "0" ] ; then
@@ -228,22 +229,39 @@ weather_show () {
 
 
 
-if [ "$REFRESH" = "1" ] ; then
+
+get_json () {	
     case  $MODE in 
         location)
 	    feedback Getting $DATA_TYPE for $LOCATION
-            curl ${SILENT} -X GET "api.openweathermap.org/data/2.5/${DATA_TYPE}?q=${LOCATION}&mode=json&APPID=$weather_key" 
-            ;;
+	    curl ${SILENT} -X GET "api.openweathermap.org/data/2.5/${DATA_TYPE}?q=${LOCATION}&mode=json&APPID=$weather_key" 
+	    ;;
         id)
 	    feedback Getting $DATA_TYPE for location $ID
-            curl ${SILENT} -X GET "api.openweathermap.org/data/2.5/${DATA_TYPE}?id=${ID}&mode=json&APPID=$weather_key"
-            ;;
+	    curl ${SILENT} -X GET "api.openweathermap.org/data/2.5/${DATA_TYPE}?id=${ID}&mode=json&APPID=$weather_key"
+	    ;;
         *)
 	    feedback getting $DATA_TYPE for default place
-            curl ${SILENT} -X GET "api.openweathermap.org/data/2.5/${DATA_TYPE}?lat=50.333673&lon=22.972408&mode=json&APPID=$weather_key"
-            ;;
+	    curl ${SILENT} -X GET "api.openweathermap.org/data/2.5/${DATA_TYPE}?lat=${lat}&lon=${lon}8&mode=json&APPID=$weather_key"
+	    ;;
     esac > $DATA_CACHE
-fi 
+
+    < $DATA_CACHE json_pp -t null
+    
+}
+
+if [ "$REFRESH" = "1" ] ; then
+    TRIES=0
+    while [ $TRIES -lt 5 ] && ! get_json ; do
+	sleep 5
+	TRIES=$(( $TRIES + 1 ))
+    done
+    if [ $TRIES -ge 5 ] ; then
+	echo "Couldnt refresh forecast" >&2
+	exit 13
+    fi
+fi
+
 
 case $SHOW_TYPE in 
     forecast)

@@ -2,9 +2,9 @@
 
 ### author: p.budrewicz
 
-. $( dirname $0 )/user.key
-. $( dirname $0 )/bridge.ip
-. $( dirname $0 )/colors.env
+. $HOME/etc/user.key
+. $HOME/etc/bridge.ip
+. $HOME/etc/colors.env
  
 VERBOSE=0
 SHOW_RESPONSES=0 # show curl responses
@@ -96,7 +96,7 @@ discover_bridge () {
 	    bridge_url=$(scan_net)
 	    feedback -n .
     done
-    echo bridge_url=$bridge_url | tee $( dirname $0 )/bridge.ip
+    echo bridge_url=$bridge_url | tee $HOME/etc/bridge.ip
 }
 
 unjson () {
@@ -824,7 +824,80 @@ hue light on|off
     
 }
 
-my_loop () { 
+my_loop () {
+    HELPTEXT="
+hue loop        
+       until TIME   - blink until specified time
+       for SECONDS  - for that many SECONDS
+       once         - once
+       times NUMBER - NUMBER times
+    differrent TIME formats accepted:
+      - 17:32
+      - tomorrow 9:00
+      - Tuesday
+      
+"
+    maybe_help_needed "$@"
+    mandatory_lights
+    SAVED_COLOR=$( get_color $light )
+    ONOFF_STATUS=$( get_on_off $light )
+    cmd=$1
+    shift
+    # $light set outside
+    case $cmd in
+	[u]ntil) # until is a keyword and breaks emacs's and vim's formatting. LOL
+	    if [ "$1" = "" ] ; then
+		show_help 1 no time specified
+	    fi
+            TIME="$1"
+	    UNTIL=$( date --date "$TIME" +%s)
+	    feedback "Looping until $TIME ($(( $UNTIL - $( date +%s ) ))s)"
+	    ;;
+	[f]or) # for is a keyword and breaks emacs's and vim's formatting. LOL
+	    if [ "$1" = "" ] ; then
+		show_help 1 no period specified
+	    fi
+	    feedback Looping for $1 seconds
+	    UNTIL=$(( $( date +%s ) + $1))
+	    ;;
+	once)
+	    feedback Blinking once
+	    single_loop $light
+	    exit 0
+	    ;;
+	times)
+	    if [ "$1" = "" ] ; then
+		show_help 1 number of times not specified
+	    fi
+	    feedback Looping $1 times
+	    for i in $(seq 1 $1) ; do
+		single_loop $light ; sleep $SLEEP
+                maybe_give_up $light
+	    done
+	    exit 0
+	    ;;
+	*)
+	    show_help 1 unknown subcommand $cmd
+	    ;;
+    esac
+		
+    mandatory_lights
+    set_light on
+    sleep 1 # wait 4 reaction
+
+    while [ $( date +%s )  -lt $UNTIL ] ; do        
+        single_loop $light
+#        sleep $SLEEP
+        maybe_give_up $light 
+    done
+    if [ "$ONOFF_STATUS" = "1" ] ; then
+	set_bulb_color $light $SAVED_COLOR
+    else
+	set_light off $light
+    fi
+
+    return
+############### CUT HERE
     hue=0
     #TODO 
     while true ; do
@@ -832,6 +905,20 @@ my_loop () {
         hue=$(( ( $hue + 10000 ) % 65535 ))
         sleep $SLEEP
     done
+}
+
+
+single_loop () { 
+    HELPTEXT="
+$0 loop - single loop
+" 
+    maybe_help_needed "$@"
+    mandatory_lights
+    feedback loop on light $light
+    for hue in $( seq 0 3000 65000 ) ; do
+	set_bulb_color $light hue $hue 254 254
+    done
+#    polite_curl -s -X PUT -d '{"alert":"select"}' $bridge_url/api/$user_key/lights/$light/state 
 }
 
 
@@ -1324,6 +1411,9 @@ case $cmd in
     help)
         show_help 0
         ;;
+    loop)
+	for_lights my_loop "$@"
+	;;
     scan)
 	discover_bridge
 	exit 0
@@ -1358,8 +1448,6 @@ case $cmd in
 		;;
 	    fade)
                 for_lights fade "$@" 
-		;;
-	    loop)
 		;;
 	    my_loop)
 		;;
