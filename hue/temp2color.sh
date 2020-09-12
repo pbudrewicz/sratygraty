@@ -48,6 +48,8 @@ calc () {
     printf "%f" $RES
 }
 
+CONTINOUS_RANGE=1  ###
+
 color_from_C () {
   T=$1
   if [ "$( echo "$T > $RED_POINT"|bc)" = "1" ] ; then
@@ -65,6 +67,12 @@ color_from_C () {
   elif [ "$( echo "$T >= $ZERO_POINT"|bc)" = "1" ] ; then
     deb cyan green 
     interpolate $ZERO_POINT $GREEN_POINT $GREEN_ZERO $GREEN_COLOR $T
+  elif [ "$( echo "$T > $CYAN_POINT"|bc)" = "1" ] && [ "$CONTINOUS_RANGE" = "1" ] ; then
+    deb blue cyan 
+    interpolate $CYAN_POINT $ZERO_POINT $CYAN_COLOR $GREEN_ZERO $T
+  elif [ "$( echo "$T > $BLUE_POINT"|bc)" = "1" ] && [ "$CONTINOUS_RANGE" = "1" ] ; then
+    deb blue cyan 
+    interpolate $BLUE_POINT $CYAN_POINT $BLUE_COLOR $CYAN_COLOR $T
   elif [ "$( echo "$T > $BLUE_POINT"|bc)" = "1" ] ; then
     deb blue cyan 
     interpolate $BLUE_POINT $ZERO_POINT $BLUE_COLOR $CYAN_COLOR $T
