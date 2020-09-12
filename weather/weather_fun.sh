@@ -6,6 +6,8 @@ DIR=$( dirname $0 )
 
 . $DIR/../hue/colors.env
 
+light=3
+
 if [ "$1" = "-f" ] ; then
     $DIR/get_weather.sh -f > $DATA_CACHE
     shift
@@ -40,8 +42,23 @@ is_the_day () {
   fi
 }
 
+save_state () {
+    ONOFF_STATE=$( hue get onoff $light )
+    SAVED_COLOR=$( hue get color $light )
+}
+
+restore_state () {
+    if [ "$ONOFF_STATE" = "0" ] ; then
+	hue -l $light off
+    else
+	hue -l $light color $SAVED_COLOR
+    fi
+}
+
+save_state
+
 #hue -l 3 set light off
-hue -l 3 set color xy 0.35 0.35 1 
+hue -l $light set color xy 0.35 0.35 1 
 sleep 3
 
 MAX_TEMP=-50
@@ -54,22 +71,22 @@ for i in $(seq 0 $(( $CAST_COUNT - 1 )) ) ; do
     if is_the_day $date ; then continue ; fi 
     COLOR=$( temp2color.sh $T)
     echo $date $condition $T 
-    hue -l 3 set color xy $COLOR 200
+    hue -l $light set color xy $COLOR 200
     sleep 1
-    #hue -l 3 alert 
+    #hue -l $light alert 
 #    sleep 1
     if [ "$condition" = "Rain" ] ; then
 	sleep 1
 	echo ...raining...
-	hue -l 3 pulse xy $BLUE_COLOR 100 -p 1
+	hue -l $light pulse xy $BLUE_COLOR 100 -p 1
     elif [ "$condition" = "Snow" ] ; then
 	sleep 1
 	echo ...snowing...
-	hue -l 3 pulse xy $WHITE_COLOR 200 -p 1
+	hue -l $light pulse xy $WHITE_COLOR 200 -p 1
     elif [ "$condition" = "Mist" ] ; then
 	sleep 1
 	echo ...fog...
-	hue -l 3 pulse xy $WHITE_COLOR 1 -p 1
+	hue -l $light pulse xy $WHITE_COLOR 1 -p 1
     fi	
     if [ "$( echo "$T > $MAX_TEMP"|bc)" = "1" ] ; then
 	MAX_TEMP=$T
@@ -77,5 +94,6 @@ for i in $(seq 0 $(( $CAST_COUNT - 1 )) ) ; do
     fi	
 done
 echo MAX T = $MAX_TEMP at $MAX_DATE
-hue -l 3 set color xy $( temp2color.sh $MAX_TEMP ) 200 -v
+hue -l $light set color xy $( temp2color.sh $MAX_TEMP ) 200 -v
 
+restore_state
