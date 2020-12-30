@@ -11,8 +11,8 @@ show_help () {
 Usage:
    $0 [-l light] [-s] [-h] [-r] [-v]
     Options are
-      -i|--iso      - show iso code for color
-      -n|--num
+      -i|--iso      - show in iso color on termian
+      -n|--num      - show numerical value
       -h|--help     - show this help
       -l|--light    - blink hue light
       -p|--pm       - show max PM
@@ -28,7 +28,7 @@ DIR=$( dirname $0 )
 . $DIR/location_data
 
 TMP_AIR_FILE=/tmp/last-air.json.$$
-AIR_DATA_CACHE=/tmp/air_data_cache
+AIR_DATA_CACHE=$HOME/etc/air_data_cache
 LIGHT=""
 STATIONS=3
 SHOW_PM=""
