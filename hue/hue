@@ -12,7 +12,9 @@ DRY=0 # do not run curl
 DRY_SCHEMA="xy" # default schema when faking bridge interactions
 LIGHTS="" # light list 
 SLEEP=0.7 # sleeping time for blinking etc.
-STEPS="10" # number of steps in transitions
+STEPS_COUNT="10" # number of steps in transitions
+STEP_SIZE="1000" # hue step size for loop 
+
 EXP="0" # linear (not exponential) brightness
 PERSIST=0 # shall we continue even if lights were turned off
 OFF=0 # shall we turn the lights off in the end of action
@@ -24,6 +26,8 @@ CRAWLB=10
 RED_CORNER="0.6915 0.3083"
 GREEN_CORNER="0.17 0.7"
 BLUE_CORNER="0.1532 0.0475"
+BRIGHTNESS=254
+SATURATION=254
 
 FAKE_bri=111
 FAKE_mode=xy
@@ -60,7 +64,7 @@ LINEAR_SUNRISE="0.68 0.3 1
 # TODO: add support to setting color of celsius temperature and remove it from weather.sh
 # TODO: conversion ct -> xy and maybe xy -> ct.
 
-TEMP=$( getopt -o b:cd::ehk:l:op:Prs:v:: --long bridge:,check,dry::,exp,help,key:,light:,off,period:,persist,responses,steps:,verbose:: -n $0 -- "$@" )
+TEMP=$( getopt -o B:b:cd::ehk:l:op:PrS:s:v:: --long bridge:,brightness:,check,dry::,exp,help,key:,light:,off,period:,persist,responses,step:,steps:,verbose:: -n $0 -- "$@" )
 
 if [ $? != 0 ] ; then echo "Cannot parse options. Terminating..." >&2 ; exit 1 ; fi
 
@@ -72,7 +76,8 @@ dump_data () {
     echo DRY=$DRY
     echo LIGHTS=$LIGHTS
     echo SLEEP=$SLEEP
-    echo STEPS=$STEPS
+    echo STEPS_COUNT=$STEPS_COUNT
+    echo STEP_SIZE=$STEP_SIZE
     echo EXP=$EXP
     echo PERSIST=$PERSIST
     echo CRAWL=$CRAWL
@@ -131,7 +136,7 @@ interpolate () { # this function takes
     #  feedback interpolating $@
 
   debug "$@"
-  STEPS=$1
+  STEPS_COUNT=$1
   SCHEMA=$2
   
   case $SCHEMA in 
@@ -164,41 +169,41 @@ interpolate () { # this function takes
           STEP=$5
           ;;
   esac
-  debug F1:$FROM1 T1:$TO1 STEPS:$STEPS STEP:$STEP
+  debug F1:$FROM1 T1:$TO1 STEPS_COUNT:$STEPS_COUNT STEP:$STEP
   if [ "$SCHEMA" != "pair" ] ; then
       if [ "$EXP" = "1" ] ; then
-          BRI=$( calc %d "((($TOB / $FROMB) ** (1.0/$STEPS)) ** $STEP ) * $FROMB" )
+          BRI=$( calc %d "((($TOB / $FROMB) ** (1.0/$STEPS_COUNT)) ** $STEP ) * $FROMB" )
       else
-          BRI=$( calc %d "($TOB - $FROMB)/$STEPS * $STEP + $FROMB" ) 
+          BRI=$( calc %d "($TOB - $FROMB)/$STEPS_COUNT * $STEP + $FROMB" ) 
       fi
       debug b:$BRI
   fi
   case $SCHEMA in 
       xy)
-	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
-	  VAL2=$( calc "($TO2 - $FROM2)/$STEPS * $STEP + $FROM2" )
+	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS_COUNT * $STEP + $FROM1" )
+	  VAL2=$( calc "($TO2 - $FROM2)/$STEPS_COUNT * $STEP + $FROM2" )
           debug x:$VAL1 y:$VAL2
           echo $SCHEMA $VAL1 $VAL2 $BRI
           ;;
       hue)
-	  VAL1=$( calc %d "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
-	  VAL2=$( calc %d "($TO2 - $FROM2)/$STEPS * $STEP + $FROM2" ) 
+	  VAL1=$( calc %d "($TO1 - $FROM1)/$STEPS_COUNT * $STEP + $FROM1" )
+	  VAL2=$( calc %d "($TO2 - $FROM2)/$STEPS_COUNT * $STEP + $FROM2" ) 
           debug hue:$VAL sat:$VAL2
           echo $SCHEMA $VAL1 $VAL2 $BRI
           ;;
       ct)
-	  VAL1=$( calc %d "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
+	  VAL1=$( calc %d "($TO1 - $FROM1)/$STEPS_COUNT * $STEP + $FROM1" )
 	  debug mirek:$VAL1
           echo $SCHEMA $VAL1 $BRI
           ;;
       [tT])
-	  VAL1=$( calc %d "((($TO1 / $FROM1) ** (1.0/$STEPS)) ** $STEP ) * $FROM1" )
+	  VAL1=$( calc %d "((($TO1 / $FROM1) ** (1.0/$STEPS_COUNT)) ** $STEP ) * $FROM1" )
 	  debug temp:$VAL1
 	  echo t $VAL1  $BRI
 	  ;;
       pair)
-	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS * $STEP + $FROM1" )
-	  VAL2=$( calc "($TO2 - $FROM2)/$STEPS * $STEP + $FROM2" )          
+	  VAL1=$( calc "($TO1 - $FROM1)/$STEPS_COUNT * $STEP + $FROM1" )
+	  VAL2=$( calc "($TO2 - $FROM2)/$STEPS_COUNT * $STEP + $FROM2" )          
           echo $VAL1  $VAL2
           ;;
       bri)
@@ -410,26 +415,26 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
 	    :	    show_help 1 Cannot transit from $SAVED_SCHEMA to $schema
 	    ;;
     esac
-    feedback transit from $SAVED_COLOR $SAVED_BRIGHTNESS to "$@" in $STEPS steps
-    for i in $( seq 1 $STEPS ) ; do
+    feedback transit from $SAVED_COLOR $SAVED_BRIGHTNESS to "$@" in $STEPS_COUNT steps
+    for i in $( seq 1 $STEPS_COUNT ) ; do
         case $1 in # hands off 
             xy|hue)                                
                 if [ "$4" = "" ] ; then
                     show_help 1 too few parameters specified $*
                 fi
-                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3 $4 $i) 
+                NEW_COLOR=$( interpolate $STEPS_COUNT $SAVED_COLOR $2 $3 $4 $i) 
 		;;
             ct)
                 if [ "$3" = "" ] ; then
                     show_help 1 too few parameters specified $*
                 fi
-                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $2 $3  $i) ;;
+                NEW_COLOR=$( interpolate $STEPS_COUNT $SAVED_COLOR $2 $3  $i) ;;
             [tT])      
                 if [ "$3" = "" ] ; then
                     show_help 1 too few parameters specified $*
                 fi
                 schema=t
-                NEW_COLOR=$( interpolate $STEPS T $SAVED_TEMP $SAVED_BRIGHTNESS $2 $3 $i) 
+                NEW_COLOR=$( interpolate $STEPS_COUNT T $SAVED_TEMP $SAVED_BRIGHTNESS $2 $3 $i) 
                 ;;
             *)      
                 if [ "$2" = "" ] ; then
@@ -437,7 +442,7 @@ hue transit {to_color} {to_brightness} - must be in currently used schema
                 fi
                 COLOR=$( describe_color $1 )
                 schema=xy
-                NEW_COLOR=$( interpolate $STEPS $SAVED_COLOR $COLOR $2 $i) ;;           
+                NEW_COLOR=$( interpolate $STEPS_COUNT $SAVED_COLOR $COLOR $2 $i) ;;           
         esac
         set_bulb_color $light $NEW_COLOR 
         sleep $SLEEP
@@ -630,6 +635,61 @@ hue crawl [x [y [b]] ] -- crawl color in CIE space in x and y range
     
 }
 
+get_final_time () {
+    action=$1
+    cmd=$2
+    case $cmd in 
+        [u]ntil) # until is a keyword and breaks emacs's and vim's formatting. LOL
+            feedback "$action until $TIME"
+            END_TIME=$( date --date "$TIME" +%s)
+            ;;
+        [f]or) # for is a keyword and breaks emacs's and vim's formatting. LOL
+            END_TIME=$(( $( date +%s ) + $TIME ))
+            feedback "$action for $TIME seconds"
+            ;;
+        *)
+            show_help 1
+            ;;
+    esac
+    echo $END_TIME
+}
+
+progress_to () {
+    val=$1
+    dest=$2
+    END_TIME=$3 # maybe superfluous
+
+    start_val=$val
+    echo going from $start_val to $dest
+    if [  $val -gt $dest ] ; then # going down
+	delta=$(( $val - $dest ))
+	step="(-1)" 
+    else # going up
+	delta=$(( $dest - $val ))
+	step="(+1)"
+    fi
+    while [ "$delta" -gt "0" ] ; do # we adapt on every loop iteration
+        SECONDS=$(( $END_TIME - $( date +%s ) ))
+        if [ "$delta" -gt "$SECONDS" ] ; then
+            ASLEEP=1 
+            new_val=$( calc "%d"  "$dest + $delta / $SECONDS * ($SECONDS - 1)" )
+        else
+            ASLEEP=$( calc %d "$SECONDS / $delta" )
+            new_val=$(( $val + "$step" ))            
+        fi
+        feedback "waiting $ASLEEP seconds ($SECONDS seconds left)"
+	set_brightness $new_val #### ACTION
+	sleep $ASLEEP
+	maybe_give_up
+        if [ "$PERSIST" = "0" ] ; then
+	    val=$( get_brightness $light) # we accept external changes... 
+        fi
+	delta=$(( ( $dest - $val) * $step ))
+	echo val $val delta $delta step $step >&2
+    done 
+# maybe    set_light off $light    
+
+}
 
 fade () { 
 
@@ -651,37 +711,25 @@ hue fade
     
     b=$(  get_brightness $light)
 
-    case $cmd in 
-        [u]ntil) # until is a keyword and breaks emacs's and vim's formatting. LOL
-            feedback "fading until $TIME"
-            END_TIME=$( date --date "$TIME" +%s)
-            ;;
-        [f]or) # for is a keyword and breaks emacs's and vim's formatting. LOL
-            END_TIME=$(( $( date +%s ) + $TIME ))
-            feedback "fading for $TIME seconds"
-            ;;
-        *)
-            show_help 1
-            ;;
-    esac
-    
-    while [ "$b" -gt "0" ] ; do # we adapt on every loop iteration
-        SECONDS=$(( $END_TIME - $( date +%s ) ))
-        if [ "$b" -gt "$SECONDS" ] ; then
-            ASLEEP=1 
-            newb=$( calc "%d"  "$b / $SECONDS * ($SECONDS - 1)" )
-        else
-            ASLEEP=$( calc %d "$SECONDS / $b" )
-            newb=$(( $b - 1 ))            
-        fi
-        feedback "waiting $ASLEEP seconds ($SECONDS seconds left)"
-	sleep $ASLEEP
-        maybe_give_up
-    	set_brightness $newb 
-        if [ "$PERSIST" = "0" ] ; then
-	    b=$( get_brightness $light) # we accept external changes... 
-        fi
-    done 
+##    END_TIME=$( get_final_time fading $cmd )        
+## generalised    while [ "$b" -gt "0" ] ; do # we adapt on every loop iteration
+## generalised        SECONDS=$(( $END_TIME - $( date +%s ) ))
+## generalised        if [ "$b" -gt "$SECONDS" ] ; then
+## generalised            ASLEEP=1 
+## generalised            newb=$( calc "%d"  "$b / $SECONDS * ($SECONDS - 1)" )
+## generalised        else
+## generalised            ASLEEP=$( calc %d "$SECONDS / $b" )
+## generalised            newb=$(( $b - 1 ))            
+## generalised        fi
+## generalised        feedback "waiting $ASLEEP seconds ($SECONDS seconds left)"
+## generalised	sleep $ASLEEP
+## generalised        maybe_give_up
+## generalised    	set_brightness $newb 
+## generalised        if [ "$PERSIST" = "0" ] ; then
+## generalised	    b=$( get_brightness $light) # we accept external changes... 
+## generalised        fi
+    ## generalised    done
+    progress_to $b 0 "$( get_final_time fading $cmd )"
     set_light off $light    
 }
 
@@ -786,7 +834,7 @@ is_light_on () {
         feedback Fake light $1 is on
         return 0
     fi
-
+    feedback Checking light $1
     if [ "$(get_on_off $1)" = "1" ] ; then
         return 0
     else
@@ -810,12 +858,12 @@ hue light on|off
     case  $ONOFF in
         on)
             mandatory_lights
-            feedback setting light $light on
+            feedback turning light $light on
             polite_curl -s -X PUT -d '{"on":true}' $bridge_url/api/$user_key/lights/$light/state 
             ;;
         off)
             mandatory_lights
-            feedback setting light $light off
+            feedback turning light $light off
             polite_curl -s -X PUT -d '{"on":false}' $bridge_url/api/$user_key/lights/$light/state 
             ;;
         *)
@@ -885,10 +933,12 @@ hue loop
     set_light on
     sleep 1 # wait 4 reaction
 
+    color_hue=0
     while [ $( date +%s )  -lt $UNTIL ] ; do        
-        single_loop $light
-#        sleep $SLEEP
-        maybe_give_up $light 
+        single_loop_step $light $color_hue $SATURATION $BRIGHTNESS
+        sleep $SLEEP
+        maybe_give_up $light
+	color_hue=$(( ( $color_hue + $STEP_SIZE ) % 65536 ))
     done
     if [ "$ONOFF_STATUS" = "1" ] ; then
 	set_bulb_color $light $SAVED_COLOR
@@ -897,14 +947,6 @@ hue loop
     fi
 
     return
-############### CUT HERE
-    hue=0
-    #TODO 
-    while true ; do
-        ./set_color.sh $1 hue $hue 254 100
-        hue=$(( ( $hue + 10000 ) % 65535 ))
-        sleep $SLEEP
-    done
 }
 
 
@@ -914,12 +956,22 @@ $0 loop - single loop
 " 
     maybe_help_needed "$@"
     mandatory_lights
-    feedback loop on light $light
-    for hue in $( seq 0 3000 65000 ) ; do
-	set_bulb_color $light hue $hue 254 254
+    feedback loop on light $light with step $STEP_SIZE
+    for hue in $( seq 0 $STEP_SIZE 65535 ) ; do
+	sleep $SLEEP
+	set_bulb_color $light hue $hue $SATURATION $BRIGHTNESS
     done
 #    polite_curl -s -X PUT -d '{"alert":"select"}' $bridge_url/api/$user_key/lights/$light/state 
 }
+
+single_loop_step () { 
+    hue=$2
+    saturation=${3:-254}
+    brightness=${4:-254} 
+    feedback loop step on light $light $hue $SATURATION $BRIGHTNESS
+    set_bulb_color $light hue $hue $saturation $brightness
+}
+
 
 
 set_brightness () { 
@@ -953,13 +1005,13 @@ hue [set] color hue {hue:0-65535} {saturation:1-254} {brightness:1-254}
         show_help 1 $*
     else
 	case $3 in
-	    max) BRIGHTNESS=254 ;;
-	    min) BRIGHTNESS=1 ;;
-	    *)  BRIGHTNESS=$3 ;;
+	    max) brightness=254 ;;
+	    min) brightness=1 ;;
+	    *)  brightness=$3 ;;
 	esac
     fi    
     feedback setting hue to "$@"
-    polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$2',"bri":'$BRIGHTNESS'}' $bridge_url/api/$user_key/lights/$light/state     
+    polite_curl -s -X PUT -d '{"on":true, "hue":'$1', "sat":'$2',"bri":'$brightness'}' $bridge_url/api/$user_key/lights/$light/state     
 }
 
 set_xy () {
@@ -1011,7 +1063,7 @@ hue set color
           xy  {x} {y} {brightness:1-254}
           ct  {mirek:153-500} {brightness:1-254}
             or named color:       
-          red|orange|yellow|green|blue|violet
+          red|orange|yellow|green|blue|violet|white
             or temperature 
           T1000 - T20000 -- color temperature in K
 "
@@ -1050,6 +1102,9 @@ describe_color () { # returns xy values for named color
             ;;
         violet)
             COLOR=$VIOLET_COLOR
+            ;;
+        white)
+            COLOR=$WHITE_COLOR
             ;;
         T*)            
             COLOR=$( K_2_xy $1 )
@@ -1152,9 +1207,9 @@ sunrise () {
     maybe_help_needed "$@"
     mandatory_lights
     if [ "$EXP" = "1" ] ; then
-	echo -e "$SUNRISE" |$(dirname $0)/../scripts/interpolate.pl $STEPS %f %f *%d  | show_sequence
+	echo -e "$SUNRISE" |$(dirname $0)/../scripts/interpolate.pl $STEPS_COUNT %f %f *%d  | show_sequence
     else
-	echo -e "$LINEAR_SUNRISE" |$(dirname $0)/../scripts/interpolate.pl $STEPS %f %f %d  | show_sequence
+	echo -e "$LINEAR_SUNRISE" |$(dirname $0)/../scripts/interpolate.pl $STEPS_COUNT %f %f %d  | show_sequence
     fi
 }
 
@@ -1164,9 +1219,9 @@ sunset () {
     maybe_help_needed "$@"
     mandatory_lights
     if [ "$EXP" = "1" ] ; then
-	echo -e "$SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl $STEPS %f %f *%d  | show_sequence
+	echo -e "$SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl $STEPS_COUNT %f %f *%d  | show_sequence
     else
-	echo -e "$LINEAR_SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl $STEPS %f %f %d  | show_sequence
+	echo -e "$LINEAR_SUNRISE" |tac|$(dirname $0)/../scripts/interpolate.pl $STEPS_COUNT %f %f %d  | show_sequence
     fi
     set_light off 
 }
@@ -1251,6 +1306,7 @@ Usage:
   hue [-b bridge_ip][-c][-d[schema]][-e][-h][-k user_key][[-l number] ... ][-o][-p period][-r][-s steps][[-v[level]] ... ] command
     Options are:
       -b|--bridge_ip   -- IP address of the hue bridge device
+      -B|--brightness  -- set brightness value for command without explicit brightnes parameter
       -c|--check       -- check if bridge data is actual and update if not
       -d|--dry[schema] -- dry run, do not bother the bridge (fake response with schema)
       -e|--exp         -- exponential brightness changes in sequencess or transitions
@@ -1263,6 +1319,7 @@ Usage:
       -P|--persist     -- keep changing lights even when they were turned off
       -r|--responses   -- show http responses from the bridge
       -s|--steps       -- number of steps in transitions
+      -S|--step        -- color step size for hue looping (full circle is 65536 colors)
       -v|--verbose     -- give feedback on taken actions (more -v increases level)
     Commands are:
       alert - one blink please
@@ -1283,8 +1340,7 @@ Usage:
         brightness LIGHT - get light brightness value for LIGHT
         onoff LIGHT - get on/of status of the light LIGHT
         color LIGHT - get color description of the light LIGHT
-      is
-        on - return \"light is on\" status (0/1 - true/false) 
+      ison - return \"light is on\" status (0/1 - true/false) 
       loop #TODO
         mode  - start color loop mode #TODO
         custom  - start custom color loop #TODO
@@ -1338,6 +1394,10 @@ while true ; do
     case "$1" in
         -b|--bridge)
             bridge_ip="$2"; shift 2;;
+	-B|--brightness)
+	    BRIGHTNESS="$2"; shift 2;;
+#	-S|--brightness)
+#	    SATURATION="$2"; shift 2;;
 	-c|--check)
 	    if ! get_config_json > /dev/null ; then
 		discover_bridge
@@ -1368,7 +1428,9 @@ while true ; do
         -r|--responses)
             SHOW_RESPONSES=1;  shift ;;
         -s|--steps)
-            STEPS="$2"; shift 2 ;;
+            STEPS_COUNT="$2"; shift 2 ;;
+        -S|--step)
+            STEP_SIZE="$2"; shift 2 ;;
         -v|--verbose)
             case "$2" in
                 "")
@@ -1408,6 +1470,9 @@ case $cmd in
     crawl) ## TODO: help support needed!
 	for_lights crawl "$@"
 	;;
+    fade)
+        for_lights fade "$@" 
+	;;
     help)
         show_help 0
         ;;
@@ -1421,8 +1486,9 @@ case $cmd in
     get)
 	get_value "$@"
 	;;
-    is)
+    ison)
 	is_light_on "$@"
+	exit $?
 	;;
     dump)
 	dump_data
@@ -1445,9 +1511,6 @@ case $cmd in
 	case $cmd in
 	    clone)                
                 for_lights clone_light "$@"
-		;;
-	    fade)
-                for_lights fade "$@" 
 		;;
 	    my_loop)
 		;;
