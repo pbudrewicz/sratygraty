@@ -50,7 +50,7 @@ done
 
 
 
-. $( dirname $0 )/weather.key
+. $HOME/etc/weather.key
 
 if [ "$MODE" = "location" ] ; then
   curl ${SILENT} -X GET "api.openweathermap.org/data/2.5/${DATA_TYPE}?q=${LOCATION}&mode=json&APPID=$weather_key"

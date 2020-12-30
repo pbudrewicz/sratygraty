@@ -4,7 +4,7 @@ PATH=$PATH:~/sratygraty/scripts:~/sratygraty/hue:~/sratygraty/weather
 DATA_CACHE=/tmp/weather_fun_info.dat
 DIR=$( dirname $0 )
 
-. $DIR/../hue/colors.env
+. $HOME/etc/colors.env
 
 light=3
 
