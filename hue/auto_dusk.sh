@@ -52,18 +52,18 @@ time_is_right () {
     SUNSET_MIN=$( echo $SUNSET_HOUR | cut -d : -f 2 )
     SUNSET_TIME=$( date -u --date "$SUNSET_HRS:$SUNSET_MIN" +%s ) 
         
-    CUR_TIME=$(date -u +%s)
+    CURRENT_TIME=$(date -u +%s)
     IN_AN_HOUR=$(date -u --date 'next hour' +%s )
     THREE_HOURS_AGO=$(date -u --date '3 hours ago' +%s)    
     
-    if [ "$IN_AN_HOUR" -lt "$SUNSET_TIME" ] ; then
+    if [ "$IN_AN_HOUR" -lt "$SUNSET_TIME" ] ; then # curent time < sunset time - 3600 | + 3600
 	[ "$VERBOSE" = 1 ] && echo Too early >&2
 	false
-    elif [ "$THREE_HOURS_AGO" -gt "$SUNSET_TIME" ] ; then
+    elif [ "$THREE_HOURS_AGO" -gt "$SUNSET_TIME" ] ; then # current time > sunset time + 3*3600 | - 3*3600
 	[ "$VERBOSE" = 1 ] && echo too late... >&2
 	false
-    elif [ "$CUR_TIME" = "$SUNSET_TIME" ] ; then
-	[ "$VERBOSE" = 1 ] && echo pora >&2
+    elif [ "$CURRENT_TIME" = "$SUNSET_TIME" ] ; then
+	[ "$VERBOSE" = 1 ] && echo just in time >&2
 	true
     else
 	[ "$VERBOSE" = 1 ] && echo about... >&2
@@ -77,20 +77,32 @@ already_running () {
       NOW=$( date -u +%s )
 
       if [ $(( $NOW - $LAST_RUN_TIME )) -lt 7200 ] ; then
-         true
+         true # probably 
       else
-	false
+	false # ran and finished
       fi
     else
-      false
+      false # never heard of
     fi
 }
 
 run_dusk () {
-  [ "$VERBOSE" = "1" ] &&  echo starting dusk for light $THE_LIGHT >&2
-  date -u +%s > $LAST_RUN_FILE
-  hue -l $THE_LIGHT transit from ct 153 $BRIGHTNESS ct 344 $BRIGHTNESS -p 10 -s 720
-  rm $LAST_RUN_FILE
+    CURRENT_TIME=$(date -u +%s)
+    TIME_TO_SUNSET=$(( $SUNSET_TIME - $CURRENT_TIME ))
+    date -u +%s > $LAST_RUN_FILE
+    if [ "$TIME_TO_SUNSET" -lt 180 ] ; then
+	TIME_TO_SUNSET=180
+    fi
+    [ "$VERBOSE" = "1" ] &&  echo starting dusk to 4000K for light $THE_LIGHT for $TIME_TO_SUNSET seconds >&2
+    hue -l $THE_LIGHT transit from ct 153 $BRIGHTNESS ct 250 $BRIGHTNESS -p 10 -s $(( $TIME_TO_SUNSET / 10 ))
+    CURRENT_TIME=$(date -u +%s)
+    TRANSIT_TIME=$(( $SUNSET_TIME + 3600 - $CURRENT_TIME ))
+    if [ "$TRANSIT_TIME" -lt 300 ] ; then
+	TRANSIT_TIME=300
+    fi
+    [ "$VERBOSE" = "1" ] &&  echo starting dusk to 2900K for light $THE_LIGHT for $TRANSIT_TIME seconds >&2
+    hue -l $THE_LIGHT transit from ct 250 $BRIGHTNESS ct 344 $BRIGHTNESS -p 10 -s $(( $TRANSIT_TIME / 10 ))
+    rm $LAST_RUN_FILE
 }
 
 run_evening () {
