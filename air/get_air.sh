@@ -27,7 +27,7 @@ DIR=$( dirname $0 )
 . $DIR/user_key
 . $DIR/location_data
 
-TMP_AIR_FILE=/tmp/last-air.json.$$
+TMP_AIR_FILE=/tmp/last-air.json.tmp
 AIR_DATA_CACHE=$HOME/etc/air_data_cache
 LIGHT=""
 STATIONS=3
@@ -71,8 +71,9 @@ while true ; do
 done
 
 get_json () {
-    
-	AIR_JSON="$( curl $SILENT -X GET --header 'Accept: application/json' --header 'Accept-Language: en' --header "apikey: $user_key" "https://airapi.airly.eu/v2/measurements/nearest?lat=${lat}&lng=${lon}&maxDistanceKM=5&maxResults=${STATIONS}" )" # | tee $TMP_AIR_FILE )"
+	[ "$VERBOSE" = "1" ] && echo lat=$lat lng=$lon
+	# AIR_JSON="$( curl $SILENT -X GET --header 'Accept: application/json' --header 'Accept-Language: en' --header "apikey: $user_key" "https://airapi.airly.eu/v2/measurements/nearest?lat=${lat}&lng=${lon}&maxDistanceKM=-1&maxResults=${STATIONS}" | tee $TMP_AIR_FILE )"
+	AIR_JSON="$( curl $SILENT -X GET --header 'Accept: application/json' --header 'Accept-Language: en' --header "apikey: $user_key" "https://airapi.airly.eu/v2/measurements/point?lat=${lat}&lng=${lon}" | tee $TMP_AIR_FILE )"
     echo $AIR_JSON| json_pp -t null    
 }
 
@@ -185,7 +186,7 @@ OVERALL_COLOR=$( level_to_color $MAX_LEVEL )
 
 if [ "$LIGHTS" != "" ] ; then
     
-    for i in $( seq 1 $MAX_LEVEL ) ; do
+    for i in $( seq 0 $MAX_LEVEL ) ; do
 	for LIGHT in $LIGHTS ; do
 	    $DIR/../hue/hue -l $LIGHT pulse $OVERALL_COLOR 254 -p 1 &
 	done
