@@ -13,7 +13,8 @@ DAYLIGHT_COLOR[3]='ct 155 254'           # switch
 DAYLIGHT_COLOR[4]='ct 153 254'           # t 6500
 DAYLIGHT_COLOR[5]='ct 153 253'           # t 6500
 
-EVENING_COLOR[0]='ct 344 254' 
+EVENING_COLOR[0]='ct 344 254'
+NIGHT_COLOR[0]='ct 400 150' 
 
 if [ "$VERBOSE" = "" ] ; then
 	VERBOSE=0
@@ -59,9 +60,9 @@ time_is_right () {
     if [ "$IN_AN_HOUR" -lt "$SUNSET_TIME" ] ; then # curent time < sunset time - 3600 | + 3600
 	[ "$VERBOSE" = 1 ] && echo Too early >&2
 	false
-    elif [ "$THREE_HOURS_AGO" -gt "$SUNSET_TIME" ] ; then # current time > sunset time + 3*3600 | - 3*3600
-	[ "$VERBOSE" = 1 ] && echo too late... >&2
-	false
+    #elif [ "$THREE_HOURS_AGO" -gt "$SUNSET_TIME" ] ; then # current time > sunset time + 3*3600 | - 3*3600
+	#[ "$VERBOSE" = 1 ] && echo too late... >&2
+	#false
     elif [ "$CURRENT_TIME" = "$SUNSET_TIME" ] ; then
 	[ "$VERBOSE" = 1 ] && echo just in time >&2
 	true
@@ -108,7 +109,14 @@ run_dusk () {
 run_evening () {
   [ "$VERBOSE" = "1" ] &&  echo starting evening for light $THE_LIGHT >&2
   date -u +%s > $LAST_RUN_FILE
-  hue -l $THE_LIGHT transit from ct 344 $BRIGHTNESS ct 500 1 -p 10 -s 720
+  hue -l $THE_LIGHT transit from ct 344 $BRIGHTNESS ct 400 150 -p 5 -s 60
+  rm $LAST_RUN_FILE
+}
+
+run_night () {
+  [ "$VERBOSE" = "1" ] &&  echo starting evening for light $THE_LIGHT >&2
+  date -u +%s > $LAST_RUN_FILE
+  hue -l $THE_LIGHT transit from ct 400 $BRIGHTNESS ct 500 100 -p 5 -s 60
   rm $LAST_RUN_FILE
 }
 
@@ -145,6 +153,20 @@ check_for_evening () {
     true
 }
 
+check_for_night () {
+
+    if ! right_color $THE_LIGHT "${NIGHT_COLOR[@]}"  ; then
+	[ "$VERBOSE" = 1 ] && echo The color for night is wrong >&2
+	return 1
+    fi
+    
+    if [ "$( date +%H%M )" -lt "2300" ] ; then    
+	[ "$VERBOSE" = 1 ] && echo NOT NOW >&2
+	return 1
+    fi
+    true
+}
+
 
 ### everything is OK
 
@@ -152,3 +174,4 @@ check_for_evening () {
 
 check_for_dusk && run_dusk &
 check_for_evening && run_evening &
+check_for_night && run_night &
