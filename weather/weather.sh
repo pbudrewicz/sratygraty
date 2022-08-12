@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash  
 
 TEMP=$( getopt -o b:dD:fghi:L:l:rsvw --long brightness:,data,date,forecast,glimpse,help,id,light:,location:,refresh,silent,verebose,weather -n $0 -- "$@" )
 
@@ -173,9 +173,9 @@ forecast_show () {
         date=$( weather get "{list}[$i]{dt_txt}" )
         if ! is_the_day $date ; then continue ; fi 
 
-        COLOR=$( temp2color.sh $T)
+        COLOR=$( temp2hue.sh $T)
         feedback $date: T=$T 
-        hue -l $light set color xy $COLOR $BRIGHTNESS $VERBOSITY
+        hue -l $light set color $COLOR $BRIGHTNESS $VERBOSITY
         sleep 1
 
         CONDITION_COUNT=$( weather count "{list}[$i]{weather}" )
@@ -198,7 +198,7 @@ forecast_show () {
         fi	
     done
     feedback MAX T = $MAX_TEMP at $MAX_DATE
-    hue -l $light set color xy $( temp2color.sh $MAX_TEMP ) $BRIGHTNESS $VERBOSITY
+    hue -l $light set color $( temp2hue.sh $MAX_TEMP ) $BRIGHTNESS $VERBOSITY
     sleep 3
     if [ "$GLIMPSE" = "1" ] ; then
         restore_state
@@ -212,8 +212,8 @@ weather_show () {
     feedback Showing data for lat:$( weather show '{coord}{lat}' ) lon:$( weather show '{coord}{lon}' )
     temperature=$( weather get "{main}{temp}" )
     T=$( C_from_K $temperature )
-        COLOR=$( temp2color.sh $T)
-        hue -l $light set color xy $COLOR $BRIGHTNESS $VERBOSITY
+        COLOR=$( temp2hue.sh $T)
+        hue -l $light set color $COLOR $BRIGHTNESS $VERBOSITY
         sleep 1
     CONDITION_COUNT=$( weather count "{weather}" )
     for c in $(seq 0 $(( $CONDITION_COUNT - 1 )) ) ; do
@@ -247,7 +247,6 @@ get_json () {
     esac > $DATA_CACHE
 
     < $DATA_CACHE json_pp -t null
-    
 }
 
 if [ "$REFRESH" = "1" ] ; then
