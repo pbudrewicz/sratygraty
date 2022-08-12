@@ -87,5 +87,5 @@ C_from_K () {
 }	
 
 COLOR=$(color_from_C $1)
-echo $COLOR
+echo xy $COLOR
 exit
